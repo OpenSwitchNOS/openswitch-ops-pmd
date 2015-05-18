@@ -20,7 +20,8 @@ project (${PMD})
 
 # Update the location of YAML files in the pmd.h.in
 # and copy that to build directory.
-set (HWDESC_FILE_LINK $ENV{HWDESC_FILE_LINK})
+set (SYSCONFDIR "/etc" CACHE STRING "Location of system configuration files")
+set (HWDESC_FILE_LINK ${SYSCONFDIR}/halon/hwdesc)
 configure_file ("${PROJECT_SOURCE_DIR}/pmd.h.in"
 		"${PROJECT_BINARY_DIR}/pmd.h")
 
