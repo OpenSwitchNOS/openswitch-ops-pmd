@@ -52,15 +52,16 @@ VLOG_DEFINE_THIS_MODULE(pmd);
 COVERAGE_DEFINE(pmd_reconfigure);
 
 static unixctl_cb_func pmd_unixctl_dump;
+#ifdef PLATFORM_SIMULATION
+static unixctl_cb_func pmd_unixctl_sim;
+#endif
 static unixctl_cb_func halon_pmd_exit;
 
 static char *parse_options(int argc, char *argv[], char **unixctl_path);
 OVS_NO_RETURN static void usage(void);
 static void pmd_print_version(void);
 
-bool simulation = false;
-
-static char *program_version = "0.01";
+static char *program_version = "0.02";
 
 extern struct ovsdb_idl *idl;
 extern void pmd_reconfigure(struct ovsdb_idl *idl);
@@ -68,9 +69,15 @@ extern void pmd_reconfigure(struct ovsdb_idl *idl);
 static void
 pmd_init(const char *remote)
 {
+    pm_config_init();
     pm_ovsdb_if_init(remote);
     unixctl_command_register("pmd/dump", "", 0, 2,
                              pmd_unixctl_dump, NULL);
+
+#ifdef PLATFORM_SIMULATION
+    unixctl_command_register("pmd/sim", "", 2, 3,
+                             pmd_unixctl_sim, NULL);
+#endif
 }
 
 static void
@@ -122,6 +129,40 @@ pmd_wait(void)
     // Wakeup periodically for pluggable module detection.
     poll_timer_wait_at(PM_INTERVAL, __FUNCTION__);
 }
+
+#ifdef PLATFORM_SIMULATION
+static void
+pmd_unixctl_sim(struct unixctl_conn *conn, int argc,
+                const char *argv[], void *aux OVS_UNUSED)
+{
+    struct ds ds = DS_EMPTY_INITIALIZER;
+
+    int rc = 0;
+    const char *interface = argv[1];
+
+    /* usage:
+        pmd/sim <interface> insert <file>
+        pmd/sim <interface> remove
+    */
+    if (4 == argc && strcmp("insert", argv[2]) == 0) {
+        rc = pmd_sim_insert(argv[1], argv[3], &ds);
+    } else if (3 == argc && strcmp("remove", argv[2]) == 0) {
+        rc = pmd_sim_remove(argv[1], &ds);
+    } else {
+        rc = -1;
+        ds_put_cstr(&ds, "Invalid usage: ... pmd/sim <interface> [insert <file> | remove]");
+        return;
+    }
+
+    if (rc < 0) {
+        unixctl_command_reply_error(conn, ds_cstr(&ds));
+    } else {
+        unixctl_command_reply(conn, ds_cstr(&ds));
+    }
+
+    ds_destroy(&ds);
+}
+#endif
 
 static void
 pmd_unixctl_dump(struct unixctl_conn *conn, int argc OVS_UNUSED,

@@ -29,11 +29,11 @@
 #include <unistd.h>
 
 #include "config-yaml.h"
-#include "pmd.h"
 
 #include <dynamic-string.h>
 #include <vswitch-idl.h>
 #include <openhalon-idl.h>
+#include "pmd.h"
 
 VLOG_DEFINE_THIS_MODULE(ovsdb_access);
 
@@ -46,6 +46,7 @@ static unsigned int idl_seqno;
 static bool cur_hw_set = false;
 
 struct shash ovs_intfs;
+struct shash ovs_subs;
 
 static bool
 ovsdb_if_intf_get_hw_enable(const struct ovsrec_interface *intf)
@@ -65,15 +66,14 @@ ovsdb_if_intf_get_hw_enable(const struct ovsrec_interface *intf)
 }
 
 static int
-ovsdb_if_intf_create(const struct ovsrec_interface *intf)
+ovsdb_if_intf_create(const struct ovsrec_interface *intf, const char *sub_name)
 {
     pm_port_t           *port = NULL;
     const YamlPort      *yaml_port = NULL;
     char                *instance = intf->name;
 
     // find the yaml port for this instance
-    // HALON_TODO: deal with multiple subsystems
-    yaml_port = pm_get_yaml_port(BASE_SUBSYSTEM, instance);
+    yaml_port = pm_get_yaml_port(sub_name, instance);
 
     if (NULL == yaml_port) {
         VLOG_WARN("unable to find YAML configuration for intf instance %s",
@@ -93,7 +93,7 @@ ovsdb_if_intf_create(const struct ovsrec_interface *intf)
     // fill in the structure
     port->instance = strdup(instance);
     memcpy(&port->uuid, &intf->header_.uuid, sizeof(intf->header_.uuid));
-    port->subsystem = strdup(BASE_SUBSYSTEM);
+    port->subsystem = strdup(sub_name);
 
     port->hw_enable = ovsdb_if_intf_get_hw_enable(intf);
 
@@ -128,6 +128,57 @@ ovsdb_if_intf_modify(const struct ovsrec_interface *intf, pm_port_t *port)
 
         // apply any port enable changes
         pm_configure_port(port);
+    }
+}
+
+static void
+ovsdb_if_intf_configure(const struct ovsrec_interface *intf)
+{
+    struct shash_node *node;
+    pm_port_t *port;
+
+    node = shash_find(&ovs_intfs, intf->name);
+
+    if (node != NULL) {
+        port = (pm_port_t *)node->data;
+        pm_configure_port(port);
+    }
+}
+
+static void
+ovsdb_if_subsys_process(const struct ovsrec_subsystem *ovs_sub)
+{
+    int i;
+    int rc;
+    struct shash_node *node;
+
+    node = shash_find(&ovs_subs, ovs_sub->name);
+    if (node == NULL) {
+        // add the subsystem to the shash
+        struct uuid *uuid = (struct uuid *) calloc(sizeof(struct uuid), 1);
+        memcpy(uuid, &ovs_sub->header_.uuid, sizeof(ovs_sub->header_.uuid));
+        shash_add(&ovs_subs, ovs_sub->name, (void *)uuid);
+
+        // read the needed YAML system definition files for this subsystem
+        rc = pm_read_yaml_files(ovs_sub);
+        if (rc != 0) {
+            VLOG_ERR("Unable to read YAML configuration files for subsystem %s: %d",
+                     ovs_sub->name, rc);
+            return;
+        }
+    }
+
+    // make sure that all of the interfaces that are present in the subsystem
+    // are created
+
+    for (i = 0; i < ovs_sub->n_interfaces; i++) {
+        const struct ovsrec_interface *intf;
+
+        intf = ovs_sub->interfaces[i];
+        node = shash_find(&ovs_intfs, intf->name);
+        if (node == NULL) {
+            ovsdb_if_intf_create(intf, ovs_sub->name);
+        }
     }
 }
 
@@ -262,21 +313,43 @@ pm_intf_subscribe(void)
     return 0;
 }
 
+static int
+pm_subsystem_subscribe(void)
+{
+    shash_init(&ovs_subs);
+
+    ovsdb_idl_add_table(idl, &ovsrec_table_subsystem);
+    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_hw_desc_dir);
+    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_interfaces);
+
+    return 0;
+}
+
 static void
 pmd_configure(struct ovsdb_idl *idl)
 {
+    const struct ovsrec_subsystem *subsys;
     const struct ovsrec_interface *intf;
+
+    // Process subsystem entries read on startup.
+    OVSREC_SUBSYSTEM_FOR_EACH(subsys, idl) {
+        VLOG_DBG("Adding Subsystem %s to pmd data store\n", subsys->name);
+        ovsdb_if_subsys_process(subsys);
+    }
 
     // Process interface entries read on startup.
     OVSREC_INTERFACE_FOR_EACH(intf, idl) {
         VLOG_DBG("Adding Interface %s to pmd data store\n", intf->name);
-        ovsdb_if_intf_create(intf);
+        ovsdb_if_intf_configure(intf);
     }
+
 }
 
 void
 pmd_reconfigure(struct ovsdb_idl *idl)
 {
+    const struct ovsrec_subsystem *subsys;
     const struct ovsrec_interface *intf;
     unsigned int new_idl_seqno = ovsdb_idl_get_seqno(idl);
     pm_port_t *port;
@@ -299,23 +372,42 @@ pmd_reconfigure(struct ovsdb_idl *idl)
             struct shash_node *delete_node;
             VLOG_DBG("Deleted Interface %s\n", port->instance);
             delete_node = shash_find(&ovs_intfs, port->instance);
-            port = (pm_port_t *)delete_node->data;
+            port = (pm_port_t *) delete_node->data;
             shash_delete(&ovs_intfs, delete_node);
             pmd_free_pm_port(port);
         }
     }
 
-    // Process added/modified interfaces.
+    // Process deleted subsystems
+    SHASH_FOR_EACH_SAFE(node, next, &ovs_subs) {
+        const struct ovsrec_subsystem *tmp_sub;
+        struct uuid *uuid;
+
+        uuid = (struct uuid *) node->data;
+
+        tmp_sub = ovsrec_subsystem_get_for_uuid(idl, uuid);
+        if (NULL == tmp_sub) {
+            struct shash_node *delete_node;
+            delete_node = shash_find(&ovs_subs, node->name);
+            VLOG_DBG("Deleted subsystem %s\n", node->name);
+            shash_delete(&ovs_subs, delete_node);
+            free(uuid);
+            // HALON_TODO: remove config subsystem
+        }
+    }
+
+    // Process added/deleted subsystems.
+    OVSREC_SUBSYSTEM_FOR_EACH(subsys, idl) {
+        ovsdb_if_subsys_process(subsys);
+    }
+
+    // Process modified interfaces.
     OVSREC_INTERFACE_FOR_EACH(intf, idl) {
         node = shash_find(&ovs_intfs, intf->name);
         if (NULL != node) {
             port = (pm_port_t *) node->data;
             // Process modified interface.
             ovsdb_if_intf_modify(intf, port);
-        } else {
-            // Process added interface.
-            VLOG_DBG("Adding Interface %s to data store\n", intf->name);
-            ovsdb_if_intf_create(intf);
         }
     }
 }
@@ -331,17 +423,10 @@ pm_ovsdb_if_init(const char *remote)
     ovsdb_idl_set_lock(idl, "halon_pmd");
     ovsdb_idl_verify_write_only(idl);
 
-    // HALON_TODO: Refactor to handle case where h/w desc files are not
-    // present for a particular subsystem.
+    // Subscribe to subsystem table.
+    pm_subsystem_subscribe();
 
-    // read the needed YAML system definition files
-    rc = pm_read_yaml_files();
-    if (rc != 0) {
-        VLOG_ERR("Unable to read YAML configuration files: %d", rc);
-        return -1;
-    }
-
-    // Subscribe to interface tables.
+    // Subscribe to interface table.
     pm_intf_subscribe();
 
     // Subscribe to daemon table.

@@ -18,10 +18,7 @@ cmake_minimum_required (VERSION 2.8)
 set (PMD pmd)
 project (${PMD})
 
-# Update the location of YAML files in the pmd.h.in
-# and copy that to build directory.
-set (SYSCONFDIR "/etc" CACHE STRING "Location of system configuration files")
-set (HWDESC_FILE_LINK ${SYSCONFDIR}/halon/hwdesc)
+OPTION( PLATFORM_SIMULATION "Enable platform simulation" OFF )
 configure_file ("${PROJECT_SOURCE_DIR}/pmd.h.in"
 		"${PROJECT_BINARY_DIR}/pmd.h")
 

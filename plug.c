@@ -42,8 +42,6 @@ VLOG_DEFINE_THIS_MODULE(plug);
 extern struct shash ovs_intfs;
 extern YamlConfigHandle global_yaml_handle;
 
-extern bool             simulation;
-
 extern int sfpp_sum_verify(unsigned char *);
 extern int pm_parse(pm_sfp_serial_id_t *serial_datap, pm_port_t *port);
 extern void pm_set_a2(pm_port_t *port, unsigned char *a2_data);
@@ -96,29 +94,14 @@ pm_delete_all_data(pm_port_t *port)
 }
 
 static bool
-pm_get_presence_simulation(pm_port_t *port)
-{
-    char    *filename;
-    int     fd;
-
-    asprintf(&filename, "/tmp/pmd_%s", port->instance);
-
-    fd = open(filename, O_RDONLY);
-
-    free(filename);
-
-    if (fd < 0) {
-        return false;
-    }
-
-    close(fd);
-
-    return true;
-}
-
-static bool
 pm_get_presence(pm_port_t *port)
 {
+#ifdef PLATFORM_SIMULATION
+    if (NULL != port->module_data) {
+        return true;
+    }
+    return false;
+#else
     // presence detection data
     bool                present;
     unsigned char       byte;
@@ -138,10 +121,6 @@ pm_get_presence(pm_port_t *port)
 
     // retry up to 5 times if data is invalid or op fails
     int                 retry_count = 5;
-
-    if (simulation) {
-        return pm_get_presence_simulation(port);
-    }
 
     if (0 == strcmp(port->module_device->connector, CONNECTOR_SFP_PLUS)) {
         reg_op = port->module_device->module_signals.sfp.sfpp_mod_present;
@@ -231,38 +210,16 @@ retry_read:
     }
 
     return present;
-}
-
-static int
-pm_read_a0_simulation(pm_port_t *port, unsigned char *data)
-{
-    char    *filename;
-    int     fd;
-
-    asprintf(&filename, "/tmp/pmd_%s_a0", port->instance);
-
-    fd = open(filename, O_RDONLY);
-
-    free(filename);
-
-    if (fd < 0) {
-        return -1;
-    }
-
-    if (read(fd, data, sizeof(pm_sfp_serial_id_t)) !=
-                sizeof(pm_sfp_serial_id_t)) {
-        close(fd);
-        return -1;
-    }
-
-    close(fd);
-
-    return 0;
+#endif
 }
 
 static int
 pm_read_a0(pm_port_t *port, unsigned char *data, size_t offset)
 {
+#ifdef PLATFORM_SIMULATION
+    memcpy(data, port->module_data, sizeof(pm_sfp_serial_id_t));
+    return 0;
+#else
     // device data
     const YamlDevice *device;
 
@@ -272,10 +229,6 @@ pm_read_a0(pm_port_t *port, unsigned char *data, size_t offset)
     int             rc;
 
     // HALON_TODO: Need to read ready bit for QSFP modules (?)
-
-    if (simulation) {
-        return pm_read_a0_simulation(port, data);
-    }
 
     // get device for module eeprom
     device = yaml_find_device(global_yaml_handle, port->subsystem, port->module_device->module_eeprom);
@@ -300,37 +253,15 @@ pm_read_a0(pm_port_t *port, unsigned char *data, size_t offset)
     }
 
     return 0;
-}
-
-static int
-pm_read_a2_simulation(pm_port_t *port, unsigned char *data)
-{
-    char    *filename;
-    int     fd;
-
-    asprintf(&filename, "/tmp/pmd_%s_a2", port->instance);
-
-    fd = open(filename, O_RDONLY);
-
-    free(filename);
-
-    if (fd < 0) {
-        return -1;
-    }
-
-    if (read(fd, data, PM_SFP_A2_PAGE_SIZE) != PM_SFP_A2_PAGE_SIZE) {
-        close(fd);
-        return -1;
-    }
-
-    close(fd);
-
-    return 0;
+#endif
 }
 
 static int
 pm_read_a2(pm_port_t *port, unsigned char *a2_data)
 {
+#ifdef PLATFORM_SIMULATION
+    return -1;
+#else
     // device data
     const YamlDevice    *device;
 
@@ -339,10 +270,6 @@ pm_read_a2(pm_port_t *port, unsigned char *a2_data)
     i2c_op *            cmds[2];
     int                 rc;
     char                a2_device_name[MAX_DEVICE_NAME_LEN];
-
-    if (simulation) {
-        return pm_read_a2_simulation(port, a2_data);
-    }
 
     strncpy(a2_device_name, port->module_device->module_eeprom, MAX_DEVICE_NAME_LEN);
     strncat(a2_device_name, "_A2", MAX_DEVICE_NAME_LEN);
@@ -369,6 +296,7 @@ pm_read_a2(pm_port_t *port, unsigned char *a2_data)
     }
 
     return 0;
+#endif
 }
 
 //
@@ -565,12 +493,33 @@ pm_read_state(void)
 void
 pm_configure_qsfp(pm_port_t *port)
 {
+    unsigned char       data = 0x00;
+    unsigned int        idx;
+
+#ifdef PLATFORM_SIMULATION
+    if (true == port->split) {
+        data = 0x00;
+        for (idx = 0; idx < MAX_SPLIT_COUNT; idx++) {
+
+            if (false == port->hw_enable_subport[idx]) {
+                data |= (1 << idx);
+            }
+        }
+    } else {
+        if (false == port->hw_enable) {
+            data = 0x0f;
+        } else {
+            data = 0x00;
+        }
+    }
+
+    port->port_enable = data;
+    return;
+#else
     int                 rc;
     i2c_op              op;
     i2c_op              *ops[2];
     const YamlDevice    *device;
-    unsigned char       data;
-    unsigned int        idx;
 
     if (false == port->present) {
         return;
@@ -583,7 +532,7 @@ pm_configure_qsfp(pm_port_t *port)
     // HALON_TODO: the split indicator needs to be filled in
     if (true == port->split) {
         data = 0x00;
-        for (idx = 0; idx < MAX_SUBPORT_COUNT; idx++) {
+        for (idx = 0; idx < MAX_SPLIT_COUNT; idx++) {
 
             if (false == port->hw_enable_subport[idx]) {
                 data |= (1 << idx);
@@ -622,47 +571,7 @@ pm_configure_qsfp(pm_port_t *port)
     }
 
     return;
-}
-
-void
-pm_configure_port_simulation(pm_port_t *port)
-{
-    char    *filename;
-    int     fd;
-    char    data;
-    int     idx;
-
-    // HALON_TODO: the split indicator needs to be filled in
-    if (true == port->split) {
-        data = 0x00;
-        for (idx = 0; idx < MAX_SUBPORT_COUNT; idx++) {
-            if (false == port->hw_enable_subport[idx]) {
-                data |= (1 << idx);
-            }
-        }
-    } else {
-        if (false == port->hw_enable) {
-            data = 0x0f;
-        } else {
-            data = 0x00;
-        }
-    }
-
-    fd = open("/tmp/pmd_tmp", O_WRONLY | O_CREAT | O_TRUNC, 0644);
-
-    if (fd < 0) {
-        return;
-    }
-
-    write(fd, &data, 1);
-
-    close(fd);
-
-    asprintf(&filename, "/tmp/pmd_%s_enabled", port->instance);
-
-    rename("/tmp/pmd_tmp", filename);
-
-    free(filename);
+#endif
 }
 
 //
@@ -675,6 +584,23 @@ pm_configure_port_simulation(pm_port_t *port)
 void
 pm_configure_port(pm_port_t *port)
 {
+#ifdef PLATFORM_SIMULATION
+    bool                enabled;
+
+    if (0 == strcmp(port->module_device->connector, CONNECTOR_QSFP_PLUS)) {
+        pm_configure_qsfp(port);
+    } else {
+        enabled = port->hw_enable;
+
+        if (enabled) {
+            port->port_enable = 1;
+        } else {
+            port->port_enable = 0;
+        }
+    }
+
+    return;
+#else
     int                 rc;
     i2c_bit_op          *reg_op;
     i2c_op              op;
@@ -687,11 +613,6 @@ pm_configure_port(pm_port_t *port)
     bool                enabled;
 
     if (NULL == port) {
-        return;
-    }
-
-    if (simulation) {
-        pm_configure_port_simulation(port);
         return;
     }
 
@@ -809,4 +730,77 @@ pm_configure_port(pm_port_t *port)
 
     VLOG_DBG("set port %s to %s",
              port->instance, enabled ? "enabled" : "disabled");
+#endif
 }
+
+#ifdef PLATFORM_SIMULATION
+int
+pmd_sim_insert(const char *name, const char *file, struct ds *ds)
+{
+    struct shash_node *node;
+    pm_port_t *port;
+    FILE *fp;
+    unsigned char *data;
+
+    node = shash_find(&ovs_intfs, name);
+    if (NULL == node) {
+        ds_put_cstr(ds, "No such interface");
+        return -1;
+    }
+    port = (pm_port_t *)node->data;
+
+    if (NULL != port->module_data) {
+        free(port->module_data);
+        port->module_data = NULL;
+    }
+
+    fp = fopen(file, "r");
+
+    if (NULL == fp) {
+        ds_put_cstr(ds, "Can't open file");
+        return -1;
+    }
+
+    data = (unsigned char *)malloc(sizeof(pm_sfp_serial_id_t));
+
+    if (1 != fread(data, sizeof(pm_sfp_serial_id_t), 1, fp)) {
+        ds_put_cstr(ds, "Unable to read data");
+        free(data);
+        fclose(fp);
+        return -1;
+    }
+
+    fclose(fp);
+
+    port->module_data = data;
+
+    ds_put_cstr(ds, "Pluggable module inserted");
+
+    return 0;
+}
+
+int
+pmd_sim_remove(const char *name, struct ds *ds)
+{
+    struct shash_node *node;
+    pm_port_t *port;
+
+    node = shash_find(&ovs_intfs, name);
+    if (NULL == node) {
+        ds_put_cstr(ds, "No such interface");
+        return -1;
+    }
+    port = (pm_port_t *)node->data;
+
+    if (NULL == port->module_data) {
+        ds_put_cstr(ds, "Pluggable module not present");
+        return -1;
+    }
+
+    free(port->module_data);
+    port->module_data = NULL;
+
+    ds_put_cstr(ds, "Pluggable module removed");
+    return 0;
+}
+#endif

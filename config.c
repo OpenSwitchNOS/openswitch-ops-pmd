@@ -24,6 +24,9 @@
 
 #include <string.h>
 
+#include <vswitch-idl.h>
+#include <openhalon-idl.h>
+
 #include "config-yaml.h"
 #include "pmd.h"
 
@@ -33,6 +36,14 @@
 VLOG_DEFINE_THIS_MODULE(config);
 
 YamlConfigHandle global_yaml_handle;
+extern struct shash ovs_intfs;
+
+
+void
+pm_config_init(void)
+{
+    global_yaml_handle = yaml_new_config_handle();
+}
 
 /*
  * pm_get_yaml_port: find a matching port by instance name
@@ -73,21 +84,20 @@ pm_get_yaml_port(const char *subsystem, const char *instance)
 void
 pm_create_a2_devices(void)
 {
-    size_t              count;
-    size_t              idx;
-    char                *subsystem = BASE_SUBSYSTEM;
     const YamlPort      *yaml_port;
     const YamlDevice    *a0_device;
     YamlDevice          a2_device;
     char                *new_name;
     int                 name_len;
     int                 rc;
+    struct shash_node   *node;
 
-    count = yaml_get_port_count(global_yaml_handle, subsystem);
+    SHASH_FOR_EACH(node, &ovs_intfs) {
+        pm_port_t *port;
 
-    // look at every port
-    for (idx = 0; idx < count; idx++) {
-        yaml_port = yaml_get_port(global_yaml_handle, subsystem, idx);
+        port = (pm_port_t *)node->data;
+
+        yaml_port = pm_get_yaml_port(port->subsystem, port->instance);
 
         // if the port isn't pluggable, skip it
         if (false == yaml_port->pluggable) {
@@ -100,7 +110,7 @@ pm_create_a2_devices(void)
         }
 
         // find the matching a0 device for the port
-        a0_device = yaml_find_device(global_yaml_handle, subsystem, yaml_port->module_eeprom);
+        a0_device = yaml_find_device(global_yaml_handle, port->subsystem, yaml_port->module_eeprom);
 
         if (NULL == a0_device) {
             VLOG_WARN("Unable to find eeprom device for SFP+ port: %s",
@@ -127,7 +137,7 @@ pm_create_a2_devices(void)
         a2_device.post = a0_device->post;
 
         // add the new device entry into the yaml data
-        rc = yaml_add_device(global_yaml_handle, subsystem, new_name, &a2_device);
+        rc = yaml_add_device(global_yaml_handle, port->subsystem, new_name, &a2_device);
 
         if (0 != rc) {
             VLOG_ERR("Unable to add A2 device for SFP+ port: %s",
@@ -140,19 +150,16 @@ pm_create_a2_devices(void)
 /*
  * pm_read_yaml_files: read the relevant system files for pluggable modules
  *
- * input: none
+ * input: ovsrec_subsystem
  *
  * output: 0 on success, non-zero on failure
  */
 int
-pm_read_yaml_files(void)
+pm_read_yaml_files(const struct ovsrec_subsystem *subsys)
 {
     int rc;
 
-    global_yaml_handle = yaml_new_config_handle();
-
-    // HALON_TODO: Need to refactor to use path in ovsdb.
-    rc = yaml_add_subsystem(global_yaml_handle, BASE_SUBSYSTEM, YAML_DIR);
+    rc = yaml_add_subsystem(global_yaml_handle, subsys->name, subsys->hw_desc_dir);
 
     if (0 != rc) {
         VLOG_ERR("yaml_add_subsystem failed");
@@ -160,18 +167,18 @@ pm_read_yaml_files(void)
     }
 
     // read devices
-    rc = yaml_parse_devices(global_yaml_handle, BASE_SUBSYSTEM);
+    rc = yaml_parse_devices(global_yaml_handle, subsys->name);
 
     if (0 != rc) {
-        VLOG_ERR("yaml_parse_devices failed: %s", YAML_DIR);
+        VLOG_ERR("yaml_parse_devices failed: %s", subsys->hw_desc_dir);
         goto end;
     }
 
     // read ports
-    rc = yaml_parse_ports(global_yaml_handle, BASE_SUBSYSTEM);
+    rc = yaml_parse_ports(global_yaml_handle, subsys->name);
 
     if (0 != rc) {
-        VLOG_ERR("yaml_parse_ports failed: %s", YAML_DIR);
+        VLOG_ERR("yaml_parse_ports failed: %s", subsys->hw_desc_dir);
         goto end;
     }
 
@@ -179,7 +186,7 @@ pm_read_yaml_files(void)
     pm_create_a2_devices();
 
     // send i2c initialization commands
-    yaml_init_devices(global_yaml_handle, BASE_SUBSYSTEM);
+    yaml_init_devices(global_yaml_handle, subsys->name);
 
 end:
     // could try to clean up yaml handle on error, but the application is

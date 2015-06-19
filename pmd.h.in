@@ -99,17 +99,15 @@
 
 #include "config-yaml.h"
 
+#cmakedefine PLATFORM_SIMULATION
+
 #define STATIC static
 
 #define PM_INTERVAL 500             // 0.5 seconds, in msecs
 #define PM_INTERVAL_SIMULATION 100  // 0.1 seconds, in msecs
 
-#define BASE_SUBSYSTEM  "base"
-
 #define PM_SFP_A2_PAGE_SIZE     128
 #define PM_SFP_A2_I2C_ADDRESS   0x51
-
-#define YAML_DIR   "@HWDESC_FILE_LINK@/"
 
 #define MODULE_TYPE_SFP_PLUS    1
 #define MODULE_TYPE_QSFP_PLUS   2
@@ -117,7 +115,7 @@
 #define CONNECTOR_SFP_PLUS      "SFP_PLUS"
 #define CONNECTOR_QSFP_PLUS     "QSFP_PLUS"
 
-#define MAX_SUBPORT_COUNT       4
+#define MAX_SPLIT_COUNT       4
 
 struct ovs_module_info {
     /* cable_length column.
@@ -196,11 +194,15 @@ typedef struct {
                                                   update */
     bool    module_info_changed;         /* indicates db update is needed */
     bool    hw_enable;
-    bool    hw_enable_subport[MAX_SUBPORT_COUNT];
+    bool    hw_enable_subport[MAX_SPLIT_COUNT];
     bool    present;
     bool    a2_read_requested;
     bool    split;
     bool    optical;
+#ifdef PLATFORM_SIMULATION
+    const unsigned char *   module_data;
+    char    port_enable;
+#endif
 } pm_port_t;
 
 // macros to manage changes to pluggable module data in ovsrec.
@@ -250,7 +252,7 @@ typedef struct {
     }
 
 // YAML config file method
-int pm_read_yaml_files(void);
+int pm_read_yaml_files(const struct ovsrec_subsystem *subsys);
 
 // DB access methods
 int pm_port_subscribe(void);
@@ -275,5 +277,7 @@ extern void pm_ovsdb_update(void);
 extern void pm_debug_dump(struct ds *ds, int argc, const char *argv[]);
 
 extern char *hex_to_ascii(char *buf, int buf_size);
+
+extern void pm_config_init(void);
 
 #endif
