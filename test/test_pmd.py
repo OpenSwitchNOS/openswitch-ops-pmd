@@ -27,7 +27,7 @@ from halonvsi.halon import *
 
 TEST_FILE_DIR = "/files"
 
-SFP_INTERFACE = "1"
+SFP_INTERFACE = "21"
 QSFP_INTERFACE = "49"
 
 # sample files and expected results for SFPs
