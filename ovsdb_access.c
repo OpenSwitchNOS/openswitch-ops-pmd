@@ -415,8 +415,6 @@ pmd_reconfigure(struct ovsdb_idl *idl)
 int
 pm_ovsdb_if_init(const char *remote)
 {
-    int rc;
-
     idl = ovsdb_idl_create(remote, &ovsrec_idl_class, false, true);
 
     idl_seqno = ovsdb_idl_get_seqno(idl);

@@ -750,7 +750,7 @@ pmd_sim_insert(const char *name, const char *file, struct ds *ds)
     port = (pm_port_t *)node->data;
 
     if (NULL != port->module_data) {
-        free(port->module_data);
+        free((void *)port->module_data);
         port->module_data = NULL;
     }
 
@@ -797,7 +797,7 @@ pmd_sim_remove(const char *name, struct ds *ds)
         return -1;
     }
 
-    free(port->module_data);
+    free((void *)port->module_data);
     port->module_data = NULL;
 
     ds_put_cstr(ds, "Pluggable module removed");

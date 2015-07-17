@@ -65,6 +65,8 @@ static char *program_version = "0.02";
 
 extern struct ovsdb_idl *idl;
 extern void pmd_reconfigure(struct ovsdb_idl *idl);
+extern int pmd_sim_insert(const char *name, const char *file, struct ds *ds);
+extern int pmd_sim_remove(const char *name, struct ds *ds);
 
 static void
 pmd_init(const char *remote)
@@ -145,9 +147,9 @@ pmd_unixctl_sim(struct unixctl_conn *conn, int argc,
         pmd/sim <interface> remove
     */
     if (4 == argc && strcmp("insert", argv[2]) == 0) {
-        rc = pmd_sim_insert(argv[1], argv[3], &ds);
+        rc = pmd_sim_insert(interface, argv[3], &ds);
     } else if (3 == argc && strcmp("remove", argv[2]) == 0) {
-        rc = pmd_sim_remove(argv[1], &ds);
+        rc = pmd_sim_remove(interface, &ds);
     } else {
         rc = -1;
         ds_put_cstr(&ds, "Invalid usage: ... pmd/sim <interface> [insert <file> | remove]");

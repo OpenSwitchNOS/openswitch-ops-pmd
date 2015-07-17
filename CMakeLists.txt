@@ -18,6 +18,9 @@ cmake_minimum_required (VERSION 2.8)
 set (PMD pmd)
 project (${PMD})
 
+# Define compile flags
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -Wall -Werror")
+
 OPTION( PLATFORM_SIMULATION "Enable platform simulation" OFF )
 configure_file ("${PROJECT_SOURCE_DIR}/pmd.h.in"
                 "${PROJECT_BINARY_DIR}/pmd.h")
