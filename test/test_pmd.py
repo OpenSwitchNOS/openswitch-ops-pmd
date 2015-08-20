@@ -156,7 +156,7 @@ class pmdTest( HalonTest ):
         out = s1.cmd("/usr/bin/ovs-vsctl --columns=name list interface")
         lines = out.split("\n")
         for line in lines:
-            if line == '\r' or line == "":
+            if line == '\r\r' or line == "":
                 continue
             name_val = line.split(":")
             name = name_val[0].strip()
@@ -196,6 +196,7 @@ class Test_pmd:
 
     # Interface daemon tests.
     def test_initial_conditions(self):
+        info("Testing initial conditions\n")
         interfaces = self.test.get_interfaces()
         assert len(interfaces) != 0, "Expected interface count to be non-zero."
         for interface in interfaces:
@@ -235,8 +236,10 @@ class Test_pmd:
                     "Expected connector_status to be unrecognized"
 
     def test_insert_remove_SFP(self):
+        info("Testing module insertion/removal of SFP+s\n")
         self._test_insert_remove_MODULE(SFP_INTERFACE, SFP_FILES)
 
     def test_insert_remove_QSFP(self):
+        info("Testing module insertion/removal of QSFP+s\n")
         self._test_insert_remove_MODULE(QSFP_INTERFACE, QSFP_FILES)
 
