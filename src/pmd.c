@@ -55,7 +55,7 @@ static unixctl_cb_func pmd_unixctl_dump;
 #ifdef PLATFORM_SIMULATION
 static unixctl_cb_func pmd_unixctl_sim;
 #endif
-static unixctl_cb_func halon_pmd_exit;
+static unixctl_cb_func ops_pmd_exit;
 
 static char *parse_options(int argc, char *argv[], char **unixctl_path);
 OVS_NO_RETURN static void usage(void);
@@ -98,7 +98,7 @@ pmd_run(void)
     if (ovsdb_idl_is_lock_contended(idl)) {
         static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(1, 1);
 
-        VLOG_ERR_RL(&rl, "another halon-pmd process is running, "
+        VLOG_ERR_RL(&rl, "another ops-pmd process is running, "
                     "disabling this process until it goes away");
 
         return;
@@ -120,7 +120,7 @@ pmd_run(void)
 
     daemonize_complete();
     vlog_enable_async();
-    VLOG_INFO_ONCE("%s (Halon pmd) %s", program_name, program_version);
+    VLOG_INFO_ONCE("%s (OpenSwitch pmd) %s", program_name, program_version);
 }
 
 static void
@@ -201,7 +201,7 @@ main(int argc, char *argv[])
     if (retval) {
         exit(EXIT_FAILURE);
     }
-    unixctl_command_register("exit", "", 0, 0, halon_pmd_exit, &exiting);
+    unixctl_command_register("exit", "", 0, 0, ops_pmd_exit, &exiting);
 
     pmd_init(remote);
     free(remote);
@@ -294,7 +294,7 @@ parse_options(int argc, char *argv[], char **unixctl_pathp)
 static void
 usage(void)
 {
-    printf("%s: Halon pluggable module daemon (pmd)\n"
+    printf("%s: OpenSwitch pluggable module daemon (pmd)\n"
            "usage: %s [OPTIONS] [DATABASE]\n"
            "where DATABASE is a socket on which ovsdb-server is listening\n"
            "      (default: \"unix:%s/db.sock\").\n",
@@ -309,7 +309,7 @@ usage(void)
 }
 
 static void
-halon_pmd_exit(struct unixctl_conn *conn, int argc OVS_UNUSED,
+ops_pmd_exit(struct unixctl_conn *conn, int argc OVS_UNUSED,
                   const char *argv[] OVS_UNUSED, void *exiting_)
 {
     bool *exiting = exiting_;

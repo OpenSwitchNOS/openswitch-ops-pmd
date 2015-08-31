@@ -228,7 +228,7 @@ pm_read_a0(pm_port_t *port, unsigned char *data, size_t offset)
     i2c_op *        cmds[2];
     int             rc;
 
-    // HALON_TODO: Need to read ready bit for QSFP modules (?)
+    // OPS_TODO: Need to read ready bit for QSFP modules (?)
 
     // get device for module eeprom
     device = yaml_find_device(global_yaml_handle, port->subsystem, port->module_device->module_eeprom);
@@ -306,7 +306,7 @@ pm_read_a2(pm_port_t *port, unsigned char *a2_data)
 //
 // output: success 0, failure !0
 //
-// HALON_TODO: this code needs to be refactored to simplify and clarify
+// OPS_TODO: this code needs to be refactored to simplify and clarify
 int
 pm_read_module_state(pm_port_t *port)
 {
@@ -414,7 +414,7 @@ retry_read:
         }
     }
 
-    // HALON_TODO: determine how a2_read_requested will get set
+    // OPS_TODO: determine how a2_read_requested will get set
     if (port->a2_read_requested == false || offset != 0) {
         return 0;
     }
@@ -529,7 +529,7 @@ pm_configure_qsfp(pm_port_t *port)
         return;
     }
 
-    // HALON_TODO: the split indicator needs to be filled in
+    // OPS_TODO: the split indicator needs to be filled in
     if (true == port->split) {
         data = 0x00;
         for (idx = 0; idx < MAX_SPLIT_COUNT; idx++) {

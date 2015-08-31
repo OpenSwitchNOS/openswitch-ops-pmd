@@ -242,4 +242,3 @@ class Test_pmd:
     def test_insert_remove_QSFP(self):
         info("Testing module insertion/removal of QSFP+s\n")
         self._test_insert_remove_MODULE(QSFP_INTERFACE, QSFP_FILES)
-

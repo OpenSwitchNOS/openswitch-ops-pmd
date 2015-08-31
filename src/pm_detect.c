@@ -399,7 +399,7 @@ pm_parse(
                 DELETE_FREE(port, cable_length);
             }
             // fill in the rest of the data
-            // HALON_TODO: fill in the power mode
+            // OPS_TODO: fill in the power mode
             DELETE(port, power_mode);
 
             // vendor name

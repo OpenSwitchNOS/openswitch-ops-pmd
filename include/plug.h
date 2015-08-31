@@ -51,8 +51,8 @@ typedef struct pm_date_code {
         unsigned char   lot_code[2];    // Vendor Specific Lot Code (in ASCII)
 } pm_date_code_t;
 
-// HALON_TODO: USING BIT MAP DATA STRUCTURES IS NOT PORTABLE
-// HALON_TODO: CHANGE THIS IMPLEMENTATION TO USE #define VALUES
+// OPS_TODO: USING BIT MAP DATA STRUCTURES IS NOT PORTABLE
+// OPS_TODO: CHANGE THIS IMPLEMENTATION TO USE #define VALUES
 
 //
 //

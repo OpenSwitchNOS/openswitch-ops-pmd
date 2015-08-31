@@ -17,12 +17,14 @@ cmake_minimum_required (VERSION 2.8)
 
 set (PMD pmd)
 project (${PMD})
+set (SRC_DIR src)
+set (INCL_DIR include)
 
 # Define compile flags
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -Wall -Werror")
 
 OPTION( PLATFORM_SIMULATION "Enable platform simulation" OFF )
-configure_file ("${PROJECT_SOURCE_DIR}/pmd.h.in"
+configure_file ("${PROJECT_SOURCE_DIR}/${INCL_DIR}/pmd.h.in"
                 "${PROJECT_BINARY_DIR}/pmd.h")
 
 # Rules to locate needed libraries
@@ -31,12 +33,13 @@ pkg_check_modules(CONFIG_YAML REQUIRED ops-config-yaml)
 pkg_check_modules(OVSCOMMON REQUIRED libovscommon)
 pkg_check_modules(OVSDB REQUIRED libovsdb)
 
-include_directories (${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}
+include_directories (${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/${INCL_DIR}
                      ${OVSCOMMON_INCLUDE_DIRS}
 )
 
 # Source files to build pmd
-set (SOURCES pmd.c ovsdb_access.c config.c plug.c pm_detect.c)
+set (SOURCES ${SRC_DIR}/pmd.c ${SRC_DIR}/ovsdb_access.c ${SRC_DIR}/config.c
+             ${SRC_DIR}/plug.c ${SRC_DIR}/pm_detect.c)
 
 # Rules to build pluggable module daemon
 add_executable (${PMD} ${SOURCES})

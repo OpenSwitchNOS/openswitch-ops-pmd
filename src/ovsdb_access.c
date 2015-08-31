@@ -392,7 +392,7 @@ pmd_reconfigure(struct ovsdb_idl *idl)
             VLOG_DBG("Deleted subsystem %s\n", node->name);
             shash_delete(&ovs_subs, delete_node);
             free(uuid);
-            // HALON_TODO: remove config subsystem
+            // OPS_TODO: remove config subsystem
         }
     }
 
@@ -418,7 +418,7 @@ pm_ovsdb_if_init(const char *remote)
     idl = ovsdb_idl_create(remote, &ovsrec_idl_class, false, true);
 
     idl_seqno = ovsdb_idl_get_seqno(idl);
-    ovsdb_idl_set_lock(idl, "halon_pmd");
+    ovsdb_idl_set_lock(idl, "ops_pmd");
     ovsdb_idl_verify_write_only(idl);
 
     // Subscribe to subsystem table.

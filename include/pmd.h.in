@@ -185,7 +185,7 @@ typedef struct {
                                          instance of pm_port_t. Used for
                                          detection of deleted entries in
                                          ovsdb.
-                                         HALON_TODO: use ovs map constructs
+                                         OPS_TODO: use ovs map constructs
                                          instead. */
     const YamlPort  *module_device;   /* port info parsed from yaml file */
     char *subsystem;
