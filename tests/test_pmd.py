@@ -22,8 +22,8 @@ import json
 import time
 import pytest
 import subprocess
-from halonvsi.docker import *
-from halonvsi.halon import *
+from opsvsi.docker import *
+from opsvsi.opsvsitest import *
 
 TEST_FILE_DIR = "/files"
 
@@ -113,7 +113,7 @@ def datadir(request):
     return dirname
 
 # test class to perform operations on simulation engine
-class pmdTest( HalonTest ):
+class pmdTest( OpsVsiTest ):
 
     def setupNet(self):
         # if you override this function, make sure to
@@ -124,9 +124,9 @@ class pmdTest( HalonTest ):
             hopts=self.getHostOpts(),
             sopts=self.getSwitchOpts())
         self.net = Mininet(topo=topo,
-            switch=HalonSwitch,
+            switch=VsiOpenSwitch,
             host=Host,
-            link=HalonLink, controller=None,
+            link=OpsVsiLink, controller=None,
             build=True)
 
     def insert_pluggable(self, interface, module):
