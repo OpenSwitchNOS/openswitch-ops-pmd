@@ -196,6 +196,7 @@ typedef struct {
     bool    hw_enable;
     bool    hw_enable_subport[MAX_SPLIT_COUNT];
     bool    present;
+    bool    retry;
     bool    a2_read_requested;
     bool    split;
     bool    optical;
@@ -270,6 +271,7 @@ extern const YamlPort *pm_get_yaml_port(const char *subsystem, const char *insta
 
 extern void pm_update_port_modules(void);
 extern void pm_configure_port(pm_port_t *port);
+extern void pm_clear_reset(pm_port_t *port);
 extern void pm_delete_all_data(pm_port_t *port);
 
 extern int pm_ovsdb_if_init(const char *remote);

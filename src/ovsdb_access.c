@@ -102,6 +102,8 @@ ovsdb_if_intf_create(const struct ovsrec_interface *intf, const char *sub_name)
     // mark it as absent, first, so it will be processed at least once
     port->present = false;
 
+    port->retry = false;
+
     // add the port to the ovs_intfs shash, with the instance as the key
     shash_add(&ovs_intfs, port->instance, (void *)port);
 
@@ -109,6 +111,9 @@ ovsdb_if_intf_create(const struct ovsrec_interface *intf, const char *sub_name)
 
     // apply initial hw_enable state.
     pm_configure_port(port);
+
+    // clear reset (if hardware supports reset)
+    pm_clear_reset(port);
 
 end:
     return 0;

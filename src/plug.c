@@ -120,7 +120,7 @@ pm_get_presence(pm_port_t *port)
     i2c_bit_op *        reg_op;
 
     // retry up to 5 times if data is invalid or op fails
-    int                 retry_count = 5;
+    int                 retry_count = 2;
 
     if (0 == strcmp(port->module_device->connector, CONNECTOR_SFP_PLUS)) {
         reg_op = port->module_device->module_signals.sfp.sfpp_mod_present;
@@ -321,8 +321,8 @@ pm_read_module_state(pm_port_t *port)
     // a2 page is for SFP+, only
     unsigned char   a2[PM_SFP_A2_PAGE_SIZE];
 
-    // retry up to 5 times if data is invalid or op fails
-    int             retry_count = 5;
+    // retry up to 2 times if data is invalid or op fails
+    int             retry_count = 2;
     unsigned char   offset;
 
     memset(&a0, 0, sizeof(a0));
@@ -361,7 +361,7 @@ retry_read:
         return 0;
     }
 
-    if (port->present == false) {
+    if (port->present == false || port->retry == true) {
         // haven't read A0 data, yet
 
         VLOG_DBG("module is present for port: %s", port->instance);
@@ -378,9 +378,11 @@ retry_read:
             VLOG_WARN("module serial ID data read failed: %s", port->instance);
             pm_delete_all_data(port);
             port->present = true;
+            port->retry = true;
             SET_STATIC_STRING(port, connector, OVSREC_INTERFACE_PM_INFO_CONNECTOR_UNKNOWN);
             SET_STATIC_STRING(port, connector_status,
                               OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_UNRECOGNIZED);
+            return -1;
         }
 
         // do checksum validation
@@ -393,6 +395,7 @@ retry_read:
             VLOG_WARN("module serial ID data failed checksum: %s", port->instance);
             // mark port as present
             port->present = true;
+            port->retry = true;
             // delete all attributes, set "unknown" value
             pm_delete_all_data(port);
             SET_STATIC_STRING(port, connector, OVSREC_INTERFACE_PM_INFO_CONNECTOR_UNKNOWN);
@@ -407,7 +410,9 @@ retry_read:
         if (rc == 0) {
             // mark port as present
             port->present = true;
+            port->retry = false;
         } else {
+            port->retry = true;
             // note: in failure case, pm_parse will already have logged
             // an appropriate message.
             VLOG_DBG("pm_parse has failed for port %s", port->instance);
@@ -572,6 +577,134 @@ pm_configure_qsfp(pm_port_t *port)
 
     return;
 #endif
+}
+
+void
+pm_clear_reset(pm_port_t *port)
+{
+    i2c_bit_op *        reg_op = NULL;
+    i2c_op              op;
+    i2c_op *            ops[2];
+    const YamlDevice    *device;
+    unsigned char       byte;
+    unsigned short      word;
+    unsigned long       dword;
+    unsigned long       old;
+    int                 rc;
+
+    if (0 == strcmp(port->module_device->connector, CONNECTOR_QSFP_PLUS)) {
+        reg_op = port->module_device->module_signals.qsfp.qsfpp_reset;
+    }
+
+    if (NULL == reg_op) {
+        VLOG_DBG("port %s does does not have a reset", port->instance);
+        return;
+    }
+
+    device = yaml_find_device(global_yaml_handle, port->subsystem, reg_op->device);
+
+    if (NULL == device) {
+        VLOG_WARN("unable to find device for port disable: %s (%s)",
+                  port->instance, reg_op->device);
+        return;
+    }
+
+    ops[0] = &op;
+    ops[1] = NULL;
+
+    op.direction = READ;
+    op.device = reg_op->device;
+    op.byte_count = reg_op->register_size;
+    op.register_address = reg_op->register_address;
+    op.set_register = false;
+    op.negative_polarity = false;
+
+    switch (op.byte_count) {
+        case 1:
+            op.data = &byte;
+            break;
+        case 2:
+            op.data = (unsigned char *)&word;
+            break;
+        case 4:
+            op.data = (unsigned char *)&dword;
+            break;
+        default:
+            VLOG_WARN("Invalid register size for port disable %s",
+                      port->instance);
+            return;
+    }
+
+    rc = i2c_execute(global_yaml_handle, port->subsystem, device, ops);
+
+    if (rc != 0) {
+        VLOG_WARN("Failed to read module disable register: %s (%d)",
+                  port->instance, rc);
+        return;
+    }
+
+    op.direction = WRITE;
+    op.device = reg_op->device;
+    op.byte_count = reg_op->register_size;
+    op.register_address = reg_op->register_address;
+    op.set_register = false;
+    op.negative_polarity = false;
+
+    /* Note that op.data still points to the correct address */
+
+    switch (op.byte_count) {
+        case 1:
+            old = byte;
+            if (reg_op->negative_polarity) {
+                byte |= reg_op->bit_mask;
+            } else {
+                byte &= ~(reg_op->bit_mask);
+            }
+            if (old == byte) {
+                VLOG_DBG("port is correctly configured: %s",
+                        port->instance);
+                return;
+            }
+            break;
+        case 2:
+            old = word;
+            if (reg_op->negative_polarity) {
+                word |= reg_op->bit_mask;
+            } else {
+                word &= ~(reg_op->bit_mask);
+            }
+            if (old == word) {
+                VLOG_DBG("port is correctly configured: %s",
+                         port->instance);
+                return;
+            }
+            break;
+        case 4:
+            old = dword;
+            if (reg_op->negative_polarity) {
+                dword |= reg_op->bit_mask;
+            } else {
+                dword &= ~(reg_op->bit_mask);
+            }
+            if (old == dword) {
+                VLOG_DBG("port is correctly configured: %s",
+                         port->instance);
+                return;
+            }
+            break;
+        default:
+            // already checked
+            VLOG_WARN("invalid register size: %s", port->instance);
+            return;
+    }
+
+    rc = i2c_execute(global_yaml_handle, port->subsystem, device, ops);
+
+    if (rc != 0) {
+        VLOG_WARN("Unable to set module disable for port: %s (%d)",
+                  port->instance, rc);
+        return;
+    }
 }
 
 //
