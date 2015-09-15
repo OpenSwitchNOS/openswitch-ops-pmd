@@ -15,7 +15,7 @@
 
 cmake_minimum_required (VERSION 2.8)
 
-set (PMD pmd)
+set (PMD ops-pmd)
 project (${PMD})
 set (SRC_DIR src)
 set (INCL_DIR include)
@@ -37,7 +37,7 @@ include_directories (${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/${INCL_DIR}
                      ${OVSCOMMON_INCLUDE_DIRS}
 )
 
-# Source files to build pmd
+# Source files to build ops-pmd
 set (SOURCES ${SRC_DIR}/pmd.c ${SRC_DIR}/ovsdb_access.c ${SRC_DIR}/config.c
              ${SRC_DIR}/plug.c ${SRC_DIR}/pm_detect.c)
 
@@ -48,6 +48,6 @@ target_link_libraries (${PMD} ${OVSCOMMON_LIBRARIES} ${OVSDB_LIBRARIES}
                        ${CONFIG_YAML_LIBRARIES}
                        -lpthread -lrt)
 
-# Rules to install pmd binary in rootfs
+# Rules to install ops-pmd binary in rootfs
 install(TARGETS ${PMD}
         RUNTIME DESTINATION bin)
