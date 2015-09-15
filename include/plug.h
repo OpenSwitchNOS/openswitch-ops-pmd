@@ -16,7 +16,7 @@
  */
 
 /************************************************************************//**
- * @ingroup pmd
+ * @ingroup ops-pmd
  *
  * @file
  * Header file for the Pluggable Module Daemon

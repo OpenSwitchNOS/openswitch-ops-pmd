@@ -16,7 +16,7 @@
  */
 
 /************************************************************************//**
- * @ingroup pmd
+ * @ingroup ops-pmd
  *
  * @file
  * Source file for pluggable module detection functions.

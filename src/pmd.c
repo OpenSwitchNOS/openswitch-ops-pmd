@@ -17,7 +17,7 @@
  */
 
 /************************************************************************//**
- * @ingroup pmd
+ * @ingroup ops-pmd
  *
  * @file
  * Source file for the platform Pluggable Module daemon
@@ -47,7 +47,7 @@
 
 #include "pmd.h"
 
-VLOG_DEFINE_THIS_MODULE(pmd);
+VLOG_DEFINE_THIS_MODULE(ops_pmd);
 
 COVERAGE_DEFINE(pmd_reconfigure);
 
@@ -73,11 +73,11 @@ pmd_init(const char *remote)
 {
     pm_config_init();
     pm_ovsdb_if_init(remote);
-    unixctl_command_register("pmd/dump", "", 0, 2,
+    unixctl_command_register("ops-pmd/dump", "", 0, 2,
                              pmd_unixctl_dump, NULL);
 
 #ifdef PLATFORM_SIMULATION
-    unixctl_command_register("pmd/sim", "", 2, 3,
+    unixctl_command_register("ops-pmd/sim", "", 2, 3,
                              pmd_unixctl_sim, NULL);
 #endif
 }
@@ -143,8 +143,8 @@ pmd_unixctl_sim(struct unixctl_conn *conn, int argc,
     const char *interface = argv[1];
 
     /* usage:
-        pmd/sim <interface> insert <file>
-        pmd/sim <interface> remove
+        ops-pmd/sim <interface> insert <file>
+        ops-pmd/sim <interface> remove
     */
     if (4 == argc && strcmp("insert", argv[2]) == 0) {
         rc = pmd_sim_insert(interface, argv[3], &ds);
@@ -152,7 +152,7 @@ pmd_unixctl_sim(struct unixctl_conn *conn, int argc,
         rc = pmd_sim_remove(interface, &ds);
     } else {
         rc = -1;
-        ds_put_cstr(&ds, "Invalid usage: ... pmd/sim <interface> [insert <file> | remove]");
+        ds_put_cstr(&ds, "Invalid usage: ... ops-pmd/sim <interface> [insert <file> | remove]");
         return;
     }
 

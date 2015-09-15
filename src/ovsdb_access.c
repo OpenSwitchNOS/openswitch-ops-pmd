@@ -16,7 +16,7 @@
  */
 
 /************************************************************************//**
- * @ingroup pmd
+ * @ingroup ops-pmd
  *
  * @file
  * Source file for pluggable module OVSDB interface functions.
@@ -41,7 +41,7 @@ struct ovsdb_idl *idl;
 
 static unsigned int idl_seqno;
 
-#define NAME_IN_DAEMON_TABLE "pmd"
+#define NAME_IN_DAEMON_TABLE "ops-pmd"
 
 static bool cur_hw_set = false;
 
