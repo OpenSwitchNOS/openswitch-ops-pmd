@@ -16,7 +16,7 @@
  */
 
 /************************************************************************//**
- * @defgroup pmd Pluggable Module Daemon
+ * @defgroup ops-pmd Pluggable Module Daemon
  * This module is the platform daemon that processess and manages pluggable
  * modules for all subsystems in the switch that have pluggable modules.
  *
@@ -36,21 +36,21 @@
  *
  * Command line options:
  *
- *     usage: pmd [OPTIONS] [DATABASE]
+ *     usage: ops-pmd [OPTIONS] [DATABASE]
  *     where DATABASE is a socket on which ovsdb-server is listening
  *           (default: "unix:/var/run/openvswitch/db.sock").
  *
  *     Daemon options:
  *          --detach                run in background as daemon
  *          --no-chdir              do not chdir to '/'
- *          --pidfile[=FILE]        create pidfile (default: /var/run/openvswitch/pmd.pid)
+ *          --pidfile[=FILE]        create pidfile (default: /var/run/openvswitch/ops-pmd.pid)
  *          --overwrite-pidfile     with --pidfile, start even if already running
  *
  *     Logging options:
  *          -vSPEC, --verbose=SPEC   set logging levels
  *          -v, --verbose            set maximum verbosity level
  *          --log-file[=FILE]        enable logging to specified FILE
- *                                  (default: /var/log/openvswitch/pmd.log)
+ *                                  (default: /var/log/openvswitch/ops-pmd.log)
  *          --syslog-target=HOST:PORT  also send syslog msgs to HOST:PORT via UDP
  *
  *     Other options:
@@ -61,28 +61,28 @@
  *
  * ovs-apptcl options:
  *
- *      Support dump: ovs-appctl -t pmd pmd/dump [interface [name]]
+ *      Support dump: ovs-appctl -t ops-pmd ops-pmd/dump [interface [name]]
  *
  *
  * OVSDB elements usage
  *
- *     Creation: The following rows/cols are created by pmd
+ *     Creation: The following rows/cols are created by ops-pmd
  *               n/a
  *
- *     Written: The following cols are written by pmd
+ *     Written: The following cols are written by ops-pmd
  *              Interface:pm_info
- *              daemon["pmd"]:cur_hw
+ *              daemon["ops-pmd"]:cur_hw
  *
- *     Read: The following cols are read by pmd
+ *     Read: The following cols are read by ops-pmd
  *           Interface:name
  *           Interface:hw_intf_config
  *           subsystem:name
  *
  * Linux Files:
  *
- *     The following files are written by pmd
- *           /var/run/openvswitch/pmd.pid: Process ID for the pluggable module daemon
- *           /var/run/openvswitch/pmd.<pid>.ctl: unixctl socket for the pluggable module daemon
+ *     The following files are written by ops-pmd
+ *           /var/run/openvswitch/ops-pmd.pid: Process ID for the pluggable module daemon
+ *           /var/run/openvswitch/ops-pmd.<pid>.ctl: unixctl socket for the pluggable module daemon
  *
  * @}
  ***************************************************************************/

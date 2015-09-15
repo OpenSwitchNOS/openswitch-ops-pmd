@@ -132,12 +132,12 @@ class pmdTest( OpsVsiTest ):
     def insert_pluggable(self, interface, module):
         s1 = self.net.switches[0]
         shutil.copy(module, s1.shareddir)
-        out = s1.cmd("/usr/bin/ovs-appctl -t pmd pmd/sim " + interface + \
+        out = s1.cmd("/usr/bin/ovs-appctl -t ops-pmd ops-pmd/sim " + interface + \
                     " insert /shared/" + module)
 
     def remove_pluggable(self, interface):
         s1 = self.net.switches[0]
-        out = s1.cmd("/usr/bin/ovs-appctl -t pmd pmd/sim " + interface + \
+        out = s1.cmd("/usr/bin/ovs-appctl -t ops-pmd ops-pmd/sim " + interface + \
                     " remove")
 
     def get_interface(self, interface):
