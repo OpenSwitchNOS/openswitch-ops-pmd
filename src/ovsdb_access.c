@@ -31,7 +31,7 @@
 
 #include <dynamic-string.h>
 #include <vswitch-idl.h>
-#include <openhalon-idl.h>
+#include <openswitch-idl.h>
 #include "pmd.h"
 
 VLOG_DEFINE_THIS_MODULE(ovsdb_access);

@@ -29,7 +29,7 @@
 #include <ctype.h>
 
 #include <vswitch-idl.h>
-#include <openhalon-idl.h>
+#include <openswitch-idl.h>
 
 #include "pmd.h"
 #include "plug.h"
