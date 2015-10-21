@@ -41,7 +41,7 @@
 #define SFP_SERIAL_ID_OFFSET        0
 #define QSFP_SERIAL_ID_OFFSET       128
 
-#define QSFP_DISABLE_OFFSET         96
+#define QSFP_DISABLE_OFFSET         86
 
 typedef struct pm_date_code {
         unsigned char   year[2];        // Year since 2000, 00-99 (in ASCII)
