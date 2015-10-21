@@ -125,5 +125,5 @@ pm_port_t: Internal structure storing port information
 ```
 
 ## References
-* [ops-config-yaml](http://www.openswitch.net/documents/dev/ops-config-yaml/DESIGN)
-* [ops-hw-desc-files](http://www.openswitch.net/documents/dev/ops-hw-config/DESIGN)
+* [ops-config-yaml](/documents/dev/ops-config-yaml/DESIGN)
+* [ops-hw-desc-files](/documents/dev/ops-hw-config/DESIGN)
