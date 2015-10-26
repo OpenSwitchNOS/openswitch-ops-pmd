@@ -152,10 +152,10 @@ class pmdTest( OpsVsiTest ):
     def get_interfaces(self):
         s1 = self.net.switches[0]
         result = list()
-        out = s1.cmd("/usr/bin/ovs-vsctl --columns=name list interface")
+        out = s1.ovscmd("/usr/bin/ovs-vsctl --columns=name list interface")
         lines = out.split("\n")
         for line in lines:
-            if line == '\r\r' or line == "":
+            if line == '\r' or line == "":
                 continue
             name_val = line.split(":")
             name = name_val[0].strip()
