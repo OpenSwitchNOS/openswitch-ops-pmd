@@ -13,10 +13,10 @@ What is the structure of the repository?
 
 What is the license?
 --------------------
-The ops-pmd source may be used under the terms of the Apache 2.0 license. For more details refer to [COPYING](https://git.openswitch.net/cgit/openswitch/ops-pmd/tree/COPYING).
+The ops-pmd source may be used under the terms of the Apache 2.0 license. For more details refer to [COPYING](/openswitch/ops-pmd/tree/COPYING).
 
 What other documents are available?
---------------------
+-----------------------------------
 - For a high level design of ops-pmd, see its [DESIGN](/documents/dev/ops-pmd/DESIGN).
 - For answers to common questions, see the [FAQ](/documents/user/openswitch_faq).
 - For the current list of contributors and maintainers, see the [list of authors](/openswitch/ops-fand/tree/AUTHORS).
