@@ -1,76 +1,75 @@
 # pmd Test Cases
 
-[TOC]
-
-## Test Initial Conditions
+## Test initial conditions
 ### Objective
-Verify that interfaces' pm\_info initially has connector=absent and connector\_status=unrecognized
+Verify that the pm\_info in the interface has an initial status of connector=absent and connector\_status=unrecognized.
 ### Requirements
- - Virtual Mininet Test Setup
+ - The Virtual Mininet test setup is required for this test.
 ### Setup
-#### Topology Diagram
+#### Topology diagram
 ```
 [s1]
 ```
 ### Description ###
-1. Get list of interfaces
-2. Verify that interfaces list is not empty
+1. Get the list of interfaces.
+2. Verify that the interfaces list is not empty.
 3. For each interface:
-  1. verify that if the pm\_info data is present
-  2. verify pm\_info "connector" is "absent"
-  3. verify pm\_info "connector\_status" is unrecognized
+  1. Verify that the pm\_info data is present.
+  2. Verify that the pm\_info "connector" is "absent".
+  3. Confirm that the pm\_info "connector\_status" is unrecognized.
 ### Test Result Criteria
 #### Test Pass Criteria
 All verifications succeed.
 #### Test Fail Criteria
 One or more verifications fail.
 
-## Test Insertion and Removal of SFP Modules
+## Test insertion and removal of SFP modules
 ### Objective
-Verify that insertion and deletion is detected and EEPROM data is parsed.
+Verify that the insertion and deletion is detected and EEPROM data is parsed.
 ### Requirements
- - Virtual Mininet Test Setup
+ - The Virtual Mininet test setup is required for this test.
 ### Setup
-#### Topology Diagram
+#### Topology diagram
 ```
 [s1]
 ```
 ### Description
-1. Select an SFP interface
-2. Verify that pm\_info "connector" is "absent" and "connector\_status" is "unrecognized"
-3. For each SFP test data set
-  1. Simulate insertion of module
-  2. Verify that data in pm\_info matches expected data
-  3. Simulate removal of module
-  4. Verify that pm\_info "connector" is "absent" and "connector\_status" is "unrecognized"
-  5. Verify that no other values are in pm\_info
-### Test Result Criteria
-#### Test Pass Criteria
+1. Select a SFP interface.
+2. Verify that the pm\_info "connector" is "absent" and "connector\_status" is "unrecognized".
+3. For each SFP test data set:
+  1. Simulate the module insertion.
+  2. Verify that the data in pm\_info matches expected data.
+  3. Simulate the module removal.
+  4. Verify that the pm\_info "connector" is "absent" and "connector\_status" is "unrecognized".
+  5. Verify that no other values are in pm\_info.
+
+### Test result criteria
+#### Test pass criteria
 All verifications succeed.
-#### Test Fail Criteria
+#### Test fail criteria
 One or more verifications fail.
 
-## Test Insertion and Removal of QSFP Modules
+## Test insertion and removal of QSFP modules
 ### Objective
-Verify that insertion and deletion is detected and EEPROM data is parsed.
+Verify that the QSPF interface insertion and deletion is detected and EEPROM data is parsed.
 ### Requirements
- - Virtual Mininet Test Setup
+The Virtual Mininet test setup is required for this test.
 ### Setup
-#### Topology Diagram
+#### Topology diagram
 ```
 [s1]
 ```
 ### Description
-1. Select an QSFP interface
-2. Verify that pm\_info "connector" is "absent" and "connector\_status" is "unrecognized"
-3. For each QSFP test data set
-  1. Simulate insertion of module
-  2. Verify that data in pm\_info matches expected data
-  3. Simulate removal of module
-  4. Verify that pm\_info "connector" is "absent" and "connector\_status" is "unrecognized"
-  5. Verify that no other values are in pm\_info
-### Test Result Criteria
-#### Test Pass Criteria
+1. Select a QSFP interface.
+2. Verify that the pm\_info "connector" is "absent" and "connector\_status" is "unrecognized".
+3. For each QSFP test data set.
+  1. Simulate the module insertion.
+  2. Verify that the data in pm\_info matches expected data.
+  3. Simulate the module removal.
+  4. Verify that the pm\_info "connector" is "absent" and "connector\_status" is "unrecognized".
+  5. Verify that no other values are in pm\_info.
+### Test result criteria
+#### Test pass criteria
 All verifications succeed.
-#### Test Fail Criteria
+#### Test fail criteria
 One or more verifications fail.
