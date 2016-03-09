@@ -126,6 +126,9 @@ pm_get_presence(pm_port_t *port)
     } else if (0 == strcmp(port->module_device->connector,
                            CONNECTOR_QSFP_PLUS)) {
         reg_op = port->module_device->module_signals.qsfp.qsfpp_mod_present;
+    } else if (0 == strcmp(port->module_device->connector,
+                           CONNECTOR_QSFP28)) {
+        reg_op = port->module_device->module_signals.qsfp28.qsfp28p_mod_present;
     } else {
         VLOG_ERR("port is not pluggable: %s", port->instance);
         return false;
@@ -332,8 +335,10 @@ pm_read_module_state(pm_port_t *port)
 
     if (0 == strcmp(port->module_device->connector, CONNECTOR_SFP_PLUS)) {
         offset = SFP_SERIAL_ID_OFFSET;
-    } else if (0 == strcmp(port->module_device->connector,
-                           CONNECTOR_QSFP_PLUS)) {
+    } else if ((0 == strcmp(port->module_device->connector,
+                            CONNECTOR_QSFP_PLUS)) ||
+               (0 == strcmp(port->module_device->connector,
+                            CONNECTOR_QSFP28))) {
         offset = QSFP_SERIAL_ID_OFFSET;
     } else {
         VLOG_ERR("port is not pluggable: %s", port->instance);
@@ -593,6 +598,8 @@ pm_clear_reset(pm_port_t *port)
 
     if (0 == strcmp(port->module_device->connector, CONNECTOR_QSFP_PLUS)) {
         reg_op = port->module_device->module_signals.qsfp.qsfpp_reset;
+    } else if (0 == strcmp(port->module_device->connector, CONNECTOR_QSFP28)) {
+        reg_op = port->module_device->module_signals.qsfp28.qsfp28p_reset;
     }
 
     if (NULL == reg_op) {
@@ -719,7 +726,8 @@ pm_configure_port(pm_port_t *port)
 #ifdef PLATFORM_SIMULATION
     bool                enabled;
 
-    if (0 == strcmp(port->module_device->connector, CONNECTOR_QSFP_PLUS)) {
+    if ((0 == strcmp(port->module_device->connector, CONNECTOR_QSFP_PLUS)) ||
+        (0 == strcmp(port->module_device->connector, CONNECTOR_QSFP28))) {
         pm_configure_qsfp(port);
     } else {
         enabled = port->hw_enable;
@@ -748,7 +756,8 @@ pm_configure_port(pm_port_t *port)
         return;
     }
 
-    if (0 == strcmp(port->module_device->connector, CONNECTOR_QSFP_PLUS)) {
+    if ((0 == strcmp(port->module_device->connector, CONNECTOR_QSFP_PLUS)) ||
+        (0 == strcmp(port->module_device->connector, CONNECTOR_QSFP28))) {
         pm_configure_qsfp(port);
         return;
     }

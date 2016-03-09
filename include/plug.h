@@ -273,7 +273,7 @@ typedef struct {
 //      QSFP Specification Compliance Code Structure
 typedef struct {
         /* byte 131 */
-                // 10G/40G Ethernet Compliance Codes
+                // 10/40G/100G Ethernet Compliance Codes
         unsigned char   enet_40g_xlppi:1;
         unsigned char   enet_40gbase_lr4:1;
         unsigned char   enet_40gbase_sr4:1;
@@ -281,7 +281,7 @@ typedef struct {
         unsigned char   enet_10gbase_sr:1;
         unsigned char   enet_10gbase_lr:1;
         unsigned char   enet_10gbase_lrm:1;
-        unsigned char   reserved_131_7:1;
+        unsigned char   enet_extended:1;
         /* byte 132 */
                 // SONET Compliance Codes
         unsigned char   oc_48_short:1;
@@ -420,7 +420,8 @@ typedef union {
 //      QSFP Extended Options Structure
 typedef struct {
         /* byte 192 */
-        unsigned char   reserved_192;
+                // Extended Ethernet Compliance Codes
+        unsigned char   ext_compliance_code;    // PM_QSFP_EXT_COMPLIANCE_CODE_*
         /* byte 193 */
         unsigned char   rx_output_amplitude:1;  // RX output applitude implement
         unsigned char   reserved_193_1:1;
@@ -449,6 +450,24 @@ typedef struct {
         unsigned char   memory_page_1:1;        // Memory Page 1 present
         unsigned char   memory_page_2:1;        // Memory Page 2 present
 } pm_qsfp_options_t;
+
+// Values for pm_qsfp_options_t.extended_compliance_code
+#define PM_QSFP_EXT_COMPLIANCE_CODE_UNSPECIFIED     0x00
+#define PM_QSFP_EXT_COMPLIANCE_CODE_100GBASE_AOC    0x01
+#define PM_QSFP_EXT_COMPLIANCE_CODE_100GBASE_SR4    0x02
+#define PM_QSFP_EXT_COMPLIANCE_CODE_100GBASE_LR4    0x03
+#define PM_QSFP_EXT_COMPLIANCE_CODE_100GBASE_ER4    0x04
+#define PM_QSFP_EXT_COMPLIANCE_CODE_100GBASE_SR10   0x05
+#define PM_QSFP_EXT_COMPLIANCE_CODE_100GBASE_CWDM4  0x06
+#define PM_QSFP_EXT_COMPLIANCE_CODE_100GBASE_PSM4   0x07
+#define PM_QSFP_EXT_COMPLIANCE_CODE_100GBASE_ACC    0x08
+#define PM_QSFP_EXT_COMPLIANCE_CODE_100GBASE_CR4    0x0B
+#define PM_QSFP_EXT_COMPLIANCE_CODE_25GBASE_CR_CA_S 0x0C
+#define PM_QSFP_EXT_COMPLIANCE_CODE_25GBASE_CR_CA_N 0x0D
+#define PM_QSFP_EXT_COMPLIANCE_CODE_40GBASE_ER4     0x10
+#define PM_QSFP_EXT_COMPLIANCE_CODE_4x10GBASE_SR    0x11
+#define PM_QSFP_EXT_COMPLIANCE_CODE_40GBASE_PSM4    0x12
+#define PM_QSFP_EXT_COMPLIANCE_CODE_100GBASE_CLR4   0x17
 
 //      QSFP Diagnostic Monitoring Type Structure
 typedef struct {

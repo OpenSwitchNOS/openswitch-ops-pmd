@@ -110,9 +110,11 @@
 
 #define MODULE_TYPE_SFP_PLUS    1
 #define MODULE_TYPE_QSFP_PLUS   2
+#define MODULE_TYPE_QSFP28      3
 
 #define CONNECTOR_SFP_PLUS      "SFP_PLUS"
 #define CONNECTOR_QSFP_PLUS     "QSFP_PLUS"
+#define CONNECTOR_QSFP28        "QSFP28"
 
 #define MAX_SPLIT_COUNT       4
 
@@ -146,7 +148,7 @@ struct ovs_module_info {
     /* power_mode column.
        Power mode for pluggable module, i.e. 'low' or 'high'.
        Typically for QSFP only. */
-    char     *power_mode;
+    char    *power_mode;
 
     /*  Vendor name on the module. */
     char    *vendor_name;

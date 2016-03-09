@@ -143,6 +143,7 @@ pm_parse(
     char                    vendor_serial_number[PM_VENDOR_SN_LEN+1];
     char                    vendor_oui[PM_VENDOR_OUI_LEN*3];
     size_t                  idx;
+    pm_qsfp_serial_id_t*    qsfpp_serial_id;
 
     // ignore modules that aren't pluggable
     if (false == port->module_device->pluggable) {
@@ -156,11 +157,13 @@ pm_parse(
         return -1;
     }
 
-    // prepare for handling SFP+ and QSFP differently
+    // prepare for handling SFP+, QSFP+ and QSFP28 differently
     if (strcmp(port->module_device->connector, CONNECTOR_SFP_PLUS) == 0) {
         type = MODULE_TYPE_SFP_PLUS;
     } else if (strcmp(port->module_device->connector, CONNECTOR_QSFP_PLUS) == 0) {
         type = MODULE_TYPE_QSFP_PLUS;
+    } else if (strcmp(port->module_device->connector, CONNECTOR_QSFP28) == 0) {
+        type = MODULE_TYPE_QSFP28;
     } else {
         VLOG_WARN("unknown connector type for port: %s (%s)",
                   port->instance, port->module_device->connector);
@@ -349,7 +352,6 @@ pm_parse(
             // QSFP has a different structure definition (similar, but not
             // the same)
             VLOG_DBG("port is QSFP plus pluggable: %s", port->instance);
-            pm_qsfp_serial_id_t *qsfpp_serial_id;
 
             qsfpp_serial_id = (pm_qsfp_serial_id_t *)serial_datap;
 
@@ -386,6 +388,170 @@ pm_parse(
                 set_supported_speeds(port, 1, 40000);
                 DELETE(port, cable_technology);
                 DELETE_FREE(port, cable_length);
+            } else {
+                VLOG_DBG("module is unsupported: %s", port->instance);
+                port->optical = false;
+                SET_STATIC_STRING(port, connector, OVSREC_INTERFACE_PM_INFO_CONNECTOR_UNKNOWN);
+                SET_STATIC_STRING(port, connector_status,
+                                  OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_UNRECOGNIZED);
+                SET_INT_STRING(port, max_speed, 0);
+                set_supported_speeds(port, 1, 0);
+                DELETE(port, cable_technology);
+                DELETE_FREE(port, cable_length);
+            }
+            // fill in the rest of the data
+            // OPS_TODO: fill in the power mode
+            DELETE(port, power_mode);
+
+            // vendor name
+            memcpy(vendor_name, qsfpp_serial_id->vendor_name, PM_VENDOR_NAME_LEN);
+            vendor_name[PM_VENDOR_NAME_LEN] = 0;
+            // strip trailing spaces
+            idx = PM_VENDOR_NAME_LEN - 1;
+            while (idx > 0 && SPACE == vendor_name[idx]) {
+                vendor_name[idx] = 0;
+                idx--;
+            }
+
+            SET_STRING(port, vendor_name, vendor_name);
+
+            // vendor_oui
+            pm_oui_format(vendor_oui, qsfpp_serial_id->vendor_oui);
+
+            SET_STRING(port, vendor_oui, vendor_oui);
+
+            // vendor_part_number
+            memcpy(vendor_part_number, qsfpp_serial_id->vendor_part_number, PM_VENDOR_PN_LEN);
+            vendor_part_number[PM_VENDOR_PN_LEN] = 0;
+            // strip trailing spaces
+            idx = PM_VENDOR_PN_LEN - 1;
+            while (idx > 0 && SPACE == vendor_part_number[idx]) {
+                vendor_part_number[idx] = 0;
+                idx--;
+            }
+
+            SET_STRING(port, vendor_part_number, vendor_part_number);
+
+            // vendor_revision
+            memcpy(vendor_revision, qsfpp_serial_id->vendor_revision, PM_QSFP_VENDOR_REV_LEN);
+            vendor_revision[PM_QSFP_VENDOR_REV_LEN] = 0;
+            // strip trailing spaces
+            idx = PM_QSFP_VENDOR_REV_LEN - 1;
+            while (idx > 0 && SPACE == vendor_revision[idx]) {
+                vendor_revision[idx] = 0;
+                idx--;
+            }
+
+            SET_STRING(port, vendor_revision, vendor_revision);
+
+            // vendor_serial_number
+            memcpy(vendor_serial_number, qsfpp_serial_id->vendor_serial_number, PM_VENDOR_SN_LEN);
+            vendor_serial_number[PM_VENDOR_SN_LEN] = 0;
+            // strip trailing spaces
+            idx = PM_VENDOR_SN_LEN - 1;
+            while (idx > 0 && SPACE == vendor_serial_number[idx]) {
+                vendor_serial_number[idx] = 0;
+                idx--;
+            }
+
+            SET_STRING(port, vendor_serial_number, vendor_serial_number);
+
+            // a0
+            SET_BINARY(port, a0, (char *) qsfpp_serial_id, sizeof(pm_qsfp_serial_id_t));
+            break;
+        case MODULE_TYPE_QSFP28:
+
+            // Use the same structure definition used for MODULE_TYPE_QSFP_PLUS case
+            VLOG_DBG("port is QSFP 28 pluggable: %s", port->instance);
+
+            qsfpp_serial_id = (pm_qsfp_serial_id_t *)serial_datap;
+
+            if (0 != qsfpp_serial_id->spec_compliance.enet_extended) {
+                switch (qsfpp_serial_id->options.ext_compliance_code) {
+                    case PM_QSFP_EXT_COMPLIANCE_CODE_100GBASE_SR4:
+                        VLOG_DBG("module is 100G_SR4: %s", port->instance);
+                        // handle SR4 type
+                        port->optical = true;
+                        SET_STATIC_STRING(port, connector, OVSREC_INTERFACE_PM_INFO_CONNECTOR_QSFP28_SR4);
+                        SET_STATIC_STRING(port, connector_status,
+                                          OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_SUPPORTED);
+                        SET_INT_STRING(port, max_speed, 100000);
+                        set_supported_speeds(port, 1, 100000);
+                        DELETE(port, cable_technology);
+                        DELETE_FREE(port, cable_length);
+                        break;
+                    case PM_QSFP_EXT_COMPLIANCE_CODE_100GBASE_LR4:
+                        VLOG_DBG("module is 100G_LR4: %s", port->instance);
+                        // handle LR4 type
+                        port->optical = true;
+                        SET_STATIC_STRING(port, connector, OVSREC_INTERFACE_PM_INFO_CONNECTOR_QSFP28_LR4);
+                        SET_STATIC_STRING(port, connector_status,
+                                          OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_SUPPORTED);
+                        SET_INT_STRING(port, max_speed, 100000);
+                        set_supported_speeds(port, 1, 100000);
+                        DELETE(port, cable_technology);
+                        DELETE_FREE(port, cable_length);
+                        break;
+                    case PM_QSFP_EXT_COMPLIANCE_CODE_100GBASE_CWDM4:
+                        VLOG_DBG("module is 100G_CWDM4: %s", port->instance);
+                        // handle CWDM4 type
+                        port->optical = true;
+                        SET_STATIC_STRING(port, connector, OVSREC_INTERFACE_PM_INFO_CONNECTOR_QSFP28_CWDM4);
+                        SET_STATIC_STRING(port, connector_status,
+                                          OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_SUPPORTED);
+                        SET_INT_STRING(port, max_speed, 100000);
+                        set_supported_speeds(port, 1, 100000);
+                        DELETE(port, cable_technology);
+                        DELETE_FREE(port, cable_length);
+                        break;
+                    case PM_QSFP_EXT_COMPLIANCE_CODE_100GBASE_PSM4:
+                        VLOG_DBG("module is 100G_PSM4: %s", port->instance);
+                        // handle PSM4 type
+                        port->optical = true;
+                        SET_STATIC_STRING(port, connector, OVSREC_INTERFACE_PM_INFO_CONNECTOR_QSFP28_PSM4);
+                        SET_STATIC_STRING(port, connector_status,
+                                          OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_SUPPORTED);
+                        SET_INT_STRING(port, max_speed, 100000);
+                        set_supported_speeds(port, 1, 100000);
+                        DELETE(port, cable_technology);
+                        DELETE_FREE(port, cable_length);
+                        break;
+                    case PM_QSFP_EXT_COMPLIANCE_CODE_100GBASE_CR4:
+                        VLOG_DBG("module is 100G_CR4: %s", port->instance);
+                        // handle CR4 type
+                        port->optical = false;
+                        SET_STATIC_STRING(port, connector, OVSREC_INTERFACE_PM_INFO_CONNECTOR_QSFP28_CR4);
+                        SET_STATIC_STRING(port, connector_status,
+                                          OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_SUPPORTED);
+                        SET_INT_STRING(port, max_speed, 100000);
+                        set_supported_speeds(port, 1, 100000);
+                        DELETE(port, cable_technology);
+                        DELETE_FREE(port, cable_length);
+                        break;
+                    case PM_QSFP_EXT_COMPLIANCE_CODE_100GBASE_CLR4:
+                        VLOG_DBG("module is 100G_CLR4: %s", port->instance);
+                        // handle CLR4 type
+                        port->optical = true;
+                        SET_STATIC_STRING(port, connector, OVSREC_INTERFACE_PM_INFO_CONNECTOR_QSFP28_CLR4);
+                        SET_STATIC_STRING(port, connector_status,
+                                          OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_SUPPORTED);
+                        SET_INT_STRING(port, max_speed, 100000);
+                        set_supported_speeds(port, 1, 100000);
+                        DELETE(port, cable_technology);
+                        DELETE_FREE(port, cable_length);
+                        break;
+                    default:
+                        VLOG_DBG("module is unsupported: %s", port->instance);
+                        port->optical = false;
+                        SET_STATIC_STRING(port, connector, OVSREC_INTERFACE_PM_INFO_CONNECTOR_UNKNOWN);
+                        SET_STATIC_STRING(port, connector_status,
+                                          OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_UNRECOGNIZED);
+                        SET_INT_STRING(port, max_speed, 0);
+                        set_supported_speeds(port, 1, 0);
+                        DELETE(port, cable_technology);
+                        DELETE_FREE(port, cable_length);
+                        break;
+                }
             } else {
                 VLOG_DBG("module is unsupported: %s", port->instance);
                 port->optical = false;
