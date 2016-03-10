@@ -32,7 +32,9 @@
 #include <dynamic-string.h>
 #include <vswitch-idl.h>
 #include <openswitch-idl.h>
+
 #include "pmd.h"
+#include "pm_dom.h"
 
 VLOG_DEFINE_THIS_MODULE(ovsdb_access);
 
@@ -201,6 +203,7 @@ pm_ovsdb_update(void)
     // info in the database if necessary.
     SHASH_FOR_EACH(node, &ovs_intfs) {
         struct ovs_module_info *module;
+        struct ovs_module_dom_info *module_dom;
         struct smap pm_info;
 
         port = (pm_port_t *)node->data;
@@ -261,6 +264,386 @@ pm_ovsdb_update(void)
             smap_add(&pm_info, "vendor_serial_number",
                      module->vendor_serial_number);
         }
+
+        // Update diagnostics key values
+        module_dom = &port->ovs_module_dom_columns;
+
+        if (module_dom->temperature) {
+            smap_add(&pm_info, "temperature", module_dom->temperature);
+        }
+        if (module_dom->temperature_high_alarm) {
+            smap_add(&pm_info, "temperature_high_alarm", module_dom->temperature_high_alarm);
+        }
+        if (module_dom->temperature_low_alarm) {
+            smap_add(&pm_info, "temperature_low_alarm", module_dom->temperature_low_alarm);
+        }
+        if (module_dom->temperature_high_warning) {
+            smap_add(&pm_info, "temperature_high_warning", module_dom->temperature_high_warning);
+        }
+        if (module_dom->temperature_low_warning) {
+            smap_add(&pm_info, "temperature_low_warning", module_dom->temperature_low_warning);
+        }
+        if (module_dom->temperature_high_alarm_threshold) {
+            smap_add(&pm_info, "temperature_high_alarm_threshold", module_dom->temperature_high_alarm_threshold);
+        }
+        if (module_dom->temperature_low_alarm_threshold) {
+            smap_add(&pm_info, "temperature_low_alarm_threshold", module_dom->temperature_low_alarm_threshold);
+        }
+        if (module_dom->temperature_high_warning_threshold) {
+            smap_add(&pm_info, "temperature_high_warning_threshold", module_dom->temperature_high_warning_threshold);
+        }
+        if (module_dom->temperature_low_warning_threshold) {
+            smap_add(&pm_info, "temperature_low_warning_threshold", module_dom->temperature_low_warning_threshold);
+        }
+
+        if (module_dom->vcc) {
+            smap_add(&pm_info, "vcc", module_dom->vcc);
+        }
+        if (module_dom->vcc_high_alarm) {
+            smap_add(&pm_info, "vcc_high_alarm", module_dom->vcc_high_alarm);
+        }
+        if (module_dom->vcc_low_alarm) {
+            smap_add(&pm_info, "vcc_low_alarm", module_dom->vcc_low_alarm);
+        }
+        if (module_dom->vcc_high_warning) {
+            smap_add(&pm_info, "vcc_high_warning", module_dom->vcc_high_warning);
+        }
+        if (module_dom->vcc_low_warning) {
+            smap_add(&pm_info, "vcc_low_warning", module_dom->vcc_low_warning);
+        }
+        if (module_dom->vcc_high_alarm_threshold) {
+            smap_add(&pm_info, "vcc_high_alarm_threshold", module_dom->vcc_high_alarm_threshold);
+        }
+        if (module_dom->vcc_low_alarm_threshold) {
+            smap_add(&pm_info, "vcc_low_alarm_threshold", module_dom->vcc_low_alarm_threshold);
+        }
+        if (module_dom->vcc_high_warning_threshold) {
+            smap_add(&pm_info, "vcc_high_warning_threshold", module_dom->vcc_high_warning_threshold);
+        }
+        if (module_dom->vcc_low_warning_threshold) {
+            smap_add(&pm_info, "vcc_low_warning_threshold", module_dom->vcc_low_warning_threshold);
+        }
+
+        if (module_dom->tx_bias) {
+            smap_add(&pm_info, "tx_bias", module_dom->tx_bias);
+        }
+        if (module_dom->tx_bias_high_alarm) {
+            smap_add(&pm_info, "tx_bias_high_alarm", module_dom->tx_bias_high_alarm);
+        }
+        if (module_dom->tx_bias_low_alarm) {
+            smap_add(&pm_info, "tx_bias_low_alarm", module_dom->tx_bias_low_alarm);
+        }
+        if (module_dom->tx_bias_high_warning) {
+            smap_add(&pm_info, "tx_bias_high_warning", module_dom->tx_bias_high_warning);
+        }
+        if (module_dom->tx_bias_low_warning) {
+            smap_add(&pm_info, "tx_bias_low_warning", module_dom->tx_bias_low_warning);
+        }
+        if (module_dom->tx_bias_high_alarm_threshold) {
+            smap_add(&pm_info, "tx_bias_high_alarm_threshold", module_dom->tx_bias_high_alarm_threshold);
+        }
+        if (module_dom->tx_bias_low_alarm_threshold) {
+            smap_add(&pm_info, "tx_bias_low_alarm_threshold", module_dom->tx_bias_low_alarm_threshold);
+        }
+        if (module_dom->tx_bias_high_warning_threshold) {
+            smap_add(&pm_info, "tx_bias_high_warning_threshold", module_dom->tx_bias_high_warning_threshold);
+        }
+        if (module_dom->tx_bias_low_warning_threshold) {
+            smap_add(&pm_info, "tx_bias_low_warning_threshold", module_dom->tx_bias_low_warning_threshold);
+        }
+
+        if (module_dom->rx_power) {
+            smap_add(&pm_info, "rx_power", module_dom->rx_power);
+        }
+        if (module_dom->rx_power_high_alarm) {
+            smap_add(&pm_info, "rx_power_high_alarm", module_dom->rx_power_high_alarm);
+        }
+        if (module_dom->rx_power_low_alarm) {
+            smap_add(&pm_info, "rx_power_low_alarm", module_dom->rx_power_low_alarm);
+        }
+        if (module_dom->rx_power_high_warning) {
+            smap_add(&pm_info, "rx_power_high_warning", module_dom->rx_power_high_warning);
+        }
+        if (module_dom->rx_power_low_warning) {
+            smap_add(&pm_info, "rx_power_low_warning", module_dom->rx_power_low_warning);
+        }
+        if (module_dom->rx_power_high_alarm_threshold) {
+            smap_add(&pm_info, "rx_power_high_alarm_threshold", module_dom->rx_power_high_alarm_threshold);
+        }
+        if (module_dom->rx_power_low_alarm_threshold) {
+            smap_add(&pm_info, "rx_power_low_alarm_threshold", module_dom->rx_power_low_alarm_threshold);
+        }
+        if (module_dom->rx_power_high_warning_threshold) {
+            smap_add(&pm_info, "rx_power_high_warning_threshold", module_dom->rx_power_high_warning_threshold);
+        }
+        if (module_dom->rx_power_low_warning_threshold) {
+            smap_add(&pm_info, "rx_power_low_warning_threshold", module_dom->rx_power_low_warning_threshold);
+        }
+
+        if (module_dom->tx_power) {
+            smap_add(&pm_info, "tx_power", module_dom->tx_power);
+        }
+        if (module_dom->rx_power_high_alarm) {
+            smap_add(&pm_info, "tx_power_high_alarm", module_dom->tx_power_high_alarm);
+        }
+        if (module_dom->tx_power_low_alarm) {
+            smap_add(&pm_info, "tx_power_low_alarm", module_dom->tx_power_low_alarm);
+        }
+        if (module_dom->tx_power_high_warning) {
+            smap_add(&pm_info, "tx_power_high_warning", module_dom->tx_power_high_warning);
+        }
+        if (module_dom->tx_power_low_warning) {
+            smap_add(&pm_info, "tx_power_low_warning", module_dom->tx_power_low_warning);
+        }
+        if (module_dom->tx_power_high_alarm_threshold) {
+            smap_add(&pm_info, "tx_power_high_alarm_threshold", module_dom->tx_power_high_alarm_threshold);
+        }
+        if (module_dom->tx_power_low_alarm_threshold) {
+            smap_add(&pm_info, "tx_power_low_alarm_threshold", module_dom->tx_power_low_alarm_threshold);
+        }
+        if (module_dom->tx_power_high_warning_threshold) {
+            smap_add(&pm_info, "tx_power_high_warning_threshold", module_dom->tx_power_high_warning_threshold);
+        }
+        if (module_dom->tx_power_low_warning_threshold) {
+            smap_add(&pm_info, "tx_power_low_warning_threshold", module_dom->tx_power_low_warning_threshold);
+        }
+
+
+
+        if (module_dom->tx1_bias) {
+            smap_add(&pm_info, "tx1_bias", module_dom->tx1_bias);
+        }
+        if (module_dom->rx1_power) {
+            smap_add(&pm_info, "rx1_power", module_dom->rx1_power);
+        }
+
+        if (module_dom->tx1_bias_high_alarm) {
+            smap_add(&pm_info, "tx1_bias_high_alarm", module_dom->tx1_bias_high_alarm);
+        }
+        if (module_dom->tx1_bias_low_alarm) {
+            smap_add(&pm_info, "tx1_bias_low_alarm", module_dom->tx1_bias_low_alarm);
+        }
+        if (module_dom->tx1_bias_high_warning) {
+            smap_add(&pm_info, "tx1_bias_high_warning", module_dom->tx1_bias_high_warning);
+        }
+        if (module_dom->tx1_bias_low_warning) {
+            smap_add(&pm_info, "tx1_bias_low_warning", module_dom->tx1_bias_low_warning);
+        }
+        if (module_dom->tx1_bias_high_alarm_threshold) {
+            smap_add(&pm_info, "tx1_bias_high_alarm_threshold", module_dom->tx1_bias_high_alarm_threshold);
+        }
+        if (module_dom->tx1_bias_low_alarm_threshold) {
+            smap_add(&pm_info, "tx1_bias_low_alarm_threshold", module_dom->tx1_bias_low_alarm_threshold);
+        }
+        if (module_dom->tx1_bias_high_warning_threshold) {
+            smap_add(&pm_info, "tx1_bias_high_warning_threshold", module_dom->tx1_bias_high_warning_threshold);
+        }
+        if (module_dom->tx1_bias_low_warning_threshold) {
+            smap_add(&pm_info, "tx1_bias_low_warning_threshold", module_dom->tx1_bias_low_warning_threshold);
+        }
+
+        if (module_dom->rx1_power_high_alarm) {
+            smap_add(&pm_info, "rx1_power_high_alarm", module_dom->rx1_power_high_alarm);
+        }
+        if (module_dom->rx1_power_low_alarm) {
+            smap_add(&pm_info, "rx1_power_low_alarm", module_dom->rx1_power_low_alarm);
+        }
+        if (module_dom->rx1_power_high_warning) {
+            smap_add(&pm_info, "rx1_power_high_warning", module_dom->rx1_power_high_warning);
+        }
+        if (module_dom->rx1_power_low_warning) {
+            smap_add(&pm_info, "rx1_power_low_warning", module_dom->rx1_power_low_warning);
+        }
+        if (module_dom->rx1_power_high_alarm_threshold) {
+            smap_add(&pm_info, "rx1_power_high_alarm_threshold", module_dom->rx1_power_high_alarm_threshold);
+        }
+        if (module_dom->rx1_power_low_alarm_threshold) {
+            smap_add(&pm_info, "rx1_power_low_alarm_threshold", module_dom->rx1_power_low_alarm_threshold);
+        }
+        if (module_dom->rx1_power_high_warning_threshold) {
+            smap_add(&pm_info, "rx1_power_high_warning_threshold", module_dom->rx1_power_high_warning_threshold);
+        }
+        if (module_dom->rx1_power_low_warning_threshold) {
+            smap_add(&pm_info, "rx1_power_low_warning_threshold", module_dom->rx1_power_low_warning_threshold);
+        }
+
+
+
+        if (module_dom->tx2_bias) {
+            smap_add(&pm_info, "tx2_bias", module_dom->tx2_bias);
+        }
+        if (module_dom->rx2_power) {
+            smap_add(&pm_info, "rx2_power", module_dom->rx2_power);
+        }
+
+        if (module_dom->tx2_bias_high_alarm) {
+            smap_add(&pm_info, "tx2_bias_high_alarm", module_dom->tx2_bias_high_alarm);
+        }
+        if (module_dom->tx2_bias_low_alarm) {
+            smap_add(&pm_info, "tx2_bias_low_alarm", module_dom->tx2_bias_low_alarm);
+        }
+        if (module_dom->tx2_bias_high_warning) {
+            smap_add(&pm_info, "tx2_bias_high_warning", module_dom->tx2_bias_high_warning);
+        }
+        if (module_dom->tx2_bias_low_warning) {
+            smap_add(&pm_info, "tx2_bias_low_warning", module_dom->tx2_bias_low_warning);
+        }
+        if (module_dom->tx2_bias_high_alarm_threshold) {
+            smap_add(&pm_info, "tx2_bias_high_alarm_threshold", module_dom->tx2_bias_high_alarm_threshold);
+        }
+        if (module_dom->tx2_bias_low_alarm_threshold) {
+            smap_add(&pm_info, "tx2_bias_low_alarm_threshold", module_dom->tx2_bias_low_alarm_threshold);
+        }
+        if (module_dom->tx2_bias_high_warning_threshold) {
+            smap_add(&pm_info, "tx2_bias_high_warning_threshold", module_dom->tx2_bias_high_warning_threshold);
+        }
+        if (module_dom->tx2_bias_low_warning_threshold) {
+            smap_add(&pm_info, "tx2_bias_low_warning_threshold", module_dom->tx2_bias_low_warning_threshold);
+        }
+
+        if (module_dom->rx2_power_high_alarm) {
+            smap_add(&pm_info, "rx2_power_high_alarm", module_dom->rx2_power_high_alarm);
+        }
+        if (module_dom->rx2_power_low_alarm) {
+            smap_add(&pm_info, "rx2_power_low_alarm", module_dom->rx2_power_low_alarm);
+        }
+        if (module_dom->rx2_power_high_warning) {
+            smap_add(&pm_info, "rx2_power_high_warning", module_dom->rx2_power_high_warning);
+        }
+        if (module_dom->rx2_power_low_warning) {
+            smap_add(&pm_info, "rx2_power_low_warning", module_dom->rx2_power_low_warning);
+        }
+        if (module_dom->rx2_power_high_alarm_threshold) {
+            smap_add(&pm_info, "rx2_power_high_alarm_threshold", module_dom->rx2_power_high_alarm_threshold);
+        }
+        if (module_dom->rx2_power_low_alarm_threshold) {
+            smap_add(&pm_info, "rx2_power_low_alarm_threshold", module_dom->rx2_power_low_alarm_threshold);
+        }
+        if (module_dom->rx2_power_high_warning_threshold) {
+            smap_add(&pm_info, "rx2_power_high_warning_threshold", module_dom->rx2_power_high_warning_threshold);
+        }
+        if (module_dom->rx2_power_low_warning_threshold) {
+            smap_add(&pm_info, "rx2_power_low_warning_threshold", module_dom->rx2_power_low_warning_threshold);
+        }
+
+
+
+        if (module_dom->tx3_bias) {
+            smap_add(&pm_info, "tx3_bias", module_dom->tx3_bias);
+        }
+        if (module_dom->rx3_power) {
+            smap_add(&pm_info, "rx3_power", module_dom->rx3_power);
+        }
+
+        if (module_dom->tx3_bias_high_alarm) {
+            smap_add(&pm_info, "tx3_bias_high_alarm", module_dom->tx3_bias_high_alarm);
+        }
+        if (module_dom->tx3_bias_low_alarm) {
+            smap_add(&pm_info, "tx3_bias_low_alarm", module_dom->tx3_bias_low_alarm);
+        }
+        if (module_dom->tx3_bias_high_warning) {
+            smap_add(&pm_info, "tx3_bias_high_warning", module_dom->tx3_bias_high_warning);
+        }
+        if (module_dom->tx3_bias_low_warning) {
+            smap_add(&pm_info, "tx3_bias_low_warning", module_dom->tx3_bias_low_warning);
+        }
+        if (module_dom->tx3_bias_high_alarm_threshold) {
+            smap_add(&pm_info, "tx3_bias_high_alarm_threshold", module_dom->tx3_bias_high_alarm_threshold);
+        }
+        if (module_dom->tx3_bias_low_alarm_threshold) {
+            smap_add(&pm_info, "tx3_bias_low_alarm_threshold", module_dom->tx3_bias_low_alarm_threshold);
+        }
+        if (module_dom->tx3_bias_high_warning_threshold) {
+            smap_add(&pm_info, "tx3_bias_high_warning_threshold", module_dom->tx3_bias_high_warning_threshold);
+        }
+        if (module_dom->tx3_bias_low_warning_threshold) {
+            smap_add(&pm_info, "tx3_bias_low_warning_threshold", module_dom->tx3_bias_low_warning_threshold);
+        }
+
+        if (module_dom->rx3_power_high_alarm) {
+            smap_add(&pm_info, "rx3_power_high_alarm", module_dom->rx3_power_high_alarm);
+        }
+        if (module_dom->rx3_power_low_alarm) {
+            smap_add(&pm_info, "rx3_power_low_alarm", module_dom->rx3_power_low_alarm);
+        }
+        if (module_dom->rx3_power_high_warning) {
+            smap_add(&pm_info, "rx3_power_high_warning", module_dom->rx3_power_high_warning);
+        }
+        if (module_dom->rx3_power_low_warning) {
+            smap_add(&pm_info, "rx3_power_low_warning", module_dom->rx3_power_low_warning);
+        }
+        if (module_dom->rx3_power_high_alarm_threshold) {
+            smap_add(&pm_info, "rx3_power_high_alarm_threshold", module_dom->rx3_power_high_alarm_threshold);
+        }
+        if (module_dom->rx3_power_low_alarm_threshold) {
+            smap_add(&pm_info, "rx3_power_low_alarm_threshold", module_dom->rx3_power_low_alarm_threshold);
+        }
+        if (module_dom->rx3_power_high_warning_threshold) {
+            smap_add(&pm_info, "rx3_power_high_warning_threshold", module_dom->rx3_power_high_warning_threshold);
+        }
+        if (module_dom->rx3_power_low_warning_threshold) {
+            smap_add(&pm_info, "rx3_power_low_warning_threshold", module_dom->rx3_power_low_warning_threshold);
+        }
+
+
+
+        if (module_dom->tx4_bias) {
+            smap_add(&pm_info, "tx4_bias", module_dom->tx4_bias);
+        }
+        if (module_dom->rx4_power) {
+            smap_add(&pm_info, "rx4_power", module_dom->rx4_power);
+        }
+
+        if (module_dom->tx4_bias_high_alarm) {
+            smap_add(&pm_info, "tx4_bias_high_alarm", module_dom->tx4_bias_high_alarm);
+        }
+        if (module_dom->tx4_bias_low_alarm) {
+            smap_add(&pm_info, "tx4_bias_low_alarm", module_dom->tx4_bias_low_alarm);
+        }
+        if (module_dom->tx4_bias_high_warning) {
+            smap_add(&pm_info, "tx4_bias_high_warning", module_dom->tx4_bias_high_warning);
+        }
+        if (module_dom->tx4_bias_low_warning) {
+            smap_add(&pm_info, "tx4_bias_low_warning", module_dom->tx4_bias_low_warning);
+        }
+        if (module_dom->tx4_bias_high_alarm_threshold) {
+            smap_add(&pm_info, "tx4_bias_high_alarm_threshold", module_dom->tx4_bias_high_alarm_threshold);
+        }
+        if (module_dom->tx4_bias_low_alarm_threshold) {
+            smap_add(&pm_info, "tx4_bias_low_alarm_threshold", module_dom->tx4_bias_low_alarm_threshold);
+        }
+        if (module_dom->tx4_bias_high_warning_threshold) {
+            smap_add(&pm_info, "tx4_bias_high_warning_threshold", module_dom->tx4_bias_high_warning_threshold);
+        }
+        if (module_dom->tx4_bias_low_warning_threshold) {
+            smap_add(&pm_info, "tx4_bias_low_warning_threshold", module_dom->tx4_bias_low_warning_threshold);
+        }
+
+        if (module_dom->rx4_power_high_alarm) {
+            smap_add(&pm_info, "rx4_power_high_alarm", module_dom->rx4_power_high_alarm);
+        }
+        if (module_dom->rx4_power_low_alarm) {
+            smap_add(&pm_info, "rx4_power_low_alarm", module_dom->rx4_power_low_alarm);
+        }
+        if (module_dom->rx4_power_high_warning) {
+            smap_add(&pm_info, "rx4_power_high_warning", module_dom->rx4_power_high_warning);
+        }
+        if (module_dom->rx4_power_low_warning) {
+            smap_add(&pm_info, "rx4_power_low_warning", module_dom->rx4_power_low_warning);
+        }
+        if (module_dom->rx4_power_high_alarm_threshold) {
+            smap_add(&pm_info, "rx4_power_high_alarm_threshold", module_dom->rx4_power_high_alarm_threshold);
+        }
+        if (module_dom->rx4_power_low_alarm_threshold) {
+            smap_add(&pm_info, "rx4_power_low_alarm_threshold", module_dom->rx4_power_low_alarm_threshold);
+        }
+        if (module_dom->rx4_power_high_warning_threshold) {
+            smap_add(&pm_info, "rx4_power_high_warning_threshold", module_dom->rx4_power_high_warning_threshold);
+        }
+        if (module_dom->rx4_power_low_warning_threshold) {
+            smap_add(&pm_info, "rx4_power_low_warning_threshold", module_dom->rx4_power_low_warning_threshold);
+        }
+
         ovsrec_interface_set_pm_info(intf, &pm_info);
         smap_destroy(&pm_info);
 

@@ -38,7 +38,7 @@ include_directories (${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/${INCL_DIR}
 
 # Source files to build ops-pmd
 set (SOURCES ${SRC_DIR}/pmd.c ${SRC_DIR}/ovsdb_access.c ${SRC_DIR}/config.c
-             ${SRC_DIR}/plug.c ${SRC_DIR}/pm_detect.c)
+             ${SRC_DIR}/pm_dom.c ${SRC_DIR}/plug.c ${SRC_DIR}/pm_detect.c)
 
 # Rules to build pluggable module daemon
 add_executable (${PMD} ${SOURCES})
