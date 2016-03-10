@@ -98,6 +98,8 @@
 
 #include "config-yaml.h"
 
+#include "pm_dom.h"
+
 #cmakedefine PLATFORM_SIMULATION
 
 #define STATIC static
@@ -193,6 +195,7 @@ typedef struct {
     struct ovs_module_info ovs_module_columns; /* pluggable module data in a
                                                   form suitable for ovsrec
                                                   update */
+    struct ovs_module_dom_info ovs_module_dom_columns;
     bool    module_info_changed;         /* indicates db update is needed */
     bool    hw_enable;
     bool    hw_enable_subport[MAX_SPLIT_COUNT];
@@ -231,6 +234,30 @@ typedef struct {
         asprintf(&port->ovs_module_columns.field, "%d", value); \
         port->module_info_changed = true;    \
     }
+
+// Set string pointer converting float to a string.
+#define SET_FLOAT_STRING(port, field, value) \
+    if (NULL == (port->ovs_module_dom_columns.field) || \
+        strtol(port->ovs_module_dom_columns.field, NULL, 0) != value) { \
+        free(port->ovs_module_dom_columns.field); \
+        asprintf(&port->ovs_module_dom_columns.field, "%4.2f", value); \
+        port->module_info_changed = true;    \
+    }
+
+#define SET_FLAG_STRING(port, field, value) \
+    if (NULL == (port->ovs_module_dom_columns.field) || \
+        strlen(port->ovs_module_dom_columns.field) != strlen(value) || \
+        strcmp(port->ovs_module_dom_columns.field, value) != 0) { \
+        free(port->ovs_module_dom_columns.field); \
+        port->ovs_module_dom_columns.field = strdup(value);    \
+        port->module_info_changed = true;    \
+    }
+
+#define SET_BOOL_STRING(port, field, value) \
+    if (value) { \
+        SET_FLAG_STRING(port, field, "On") } \
+    else { \
+        SET_FLAG_STRING(port, field, "Off") }
 
 #define SET_BINARY(port, field, value, size) \
     do { \

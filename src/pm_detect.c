@@ -27,6 +27,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <ctype.h>
+#include <math.h>
 
 #include <vswitch-idl.h>
 #include <openswitch-idl.h>
@@ -103,15 +104,6 @@ set_supported_speeds(pm_port_t *port, size_t count, ...)
     va_end(args);
     port->ovs_module_columns.supported_speeds = speeds;
     port->module_info_changed = 1;
-}
-
-//
-// pm_set_a2: set the a2 value (force, since it's on demand)
-//
-void
-pm_set_a2(pm_port_t *port, unsigned char *a2_data)
-{
-    SET_BINARY(port, a2, (char *)a2_data, PM_SFP_A2_PAGE_SIZE);
 }
 
 //
