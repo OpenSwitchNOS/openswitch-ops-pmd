@@ -35,6 +35,7 @@
 
 #include "pmd.h"
 #include "plug.h"
+#include "pm_dom.h"
 
 VLOG_DEFINE_THIS_MODULE(plug);
 
@@ -43,7 +44,14 @@ extern YamlConfigHandle global_yaml_handle;
 
 extern int sfpp_sum_verify(unsigned char *);
 extern int pm_parse(pm_sfp_serial_id_t *serial_datap, pm_port_t *port);
-extern void pm_set_a2(pm_port_t *port, unsigned char *a2_data);
+
+
+/*
+ * Functions to retieve DOM information
+ */
+extern void pm_set_a2(pm_port_t *port, pm_sfp_dom_t *a2_data);
+extern void set_a2_read_request(pm_port_t *port, pm_sfp_serial_id_t *serial_datap);
+
 
 //
 // pm_set_enabled: change the enabled state of pluggable modules
@@ -273,8 +281,14 @@ pm_read_a2(pm_port_t *port, unsigned char *a2_data)
     int                 rc;
     char                a2_device_name[MAX_DEVICE_NAME_LEN];
 
-    strncpy(a2_device_name, port->module_device->module_eeprom, MAX_DEVICE_NAME_LEN);
-    strncat(a2_device_name, "_A2", MAX_DEVICE_NAME_LEN);
+    VLOG_DBG("Read A2 address from yaml files.");
+    if (strcmp(port->module_device->connector, CONNECTOR_SFP_PLUS) == 0) {
+        strncpy(a2_device_name, port->module_device->module_eeprom, MAX_DEVICE_NAME_LEN);
+        strncat(a2_device_name, "_dom", MAX_DEVICE_NAME_LEN);
+    }
+    else {
+        strncpy(a2_device_name, port->module_device->module_eeprom, MAX_DEVICE_NAME_LEN);
+    }
 
     // get constructed A2 device
     device = yaml_find_device(global_yaml_handle, port->subsystem, a2_device_name);
@@ -286,7 +300,7 @@ pm_read_a2(pm_port_t *port, unsigned char *a2_data)
     op.direction = READ;
     op.device = device->name;
     op.register_address = 0;
-    op.byte_count = PM_SFP_A2_PAGE_SIZE;
+    op.byte_count = sizeof(pm_sfp_dom_t);
     op.data = a2_data;
     op.set_register = false;
     op.negative_polarity = false;
@@ -294,6 +308,7 @@ pm_read_a2(pm_port_t *port, unsigned char *a2_data)
     rc = i2c_execute(global_yaml_handle, port->subsystem, device, cmds);
 
     if (rc != 0) {
+        VLOG_ERR("module dom read failed: %s", port->instance);
         return -1;
     }
 
@@ -321,14 +336,15 @@ pm_read_module_state(pm_port_t *port)
     pm_sfp_serial_id_t a0;
 
     // a2 page is for SFP+, only
-    unsigned char   a2[PM_SFP_A2_PAGE_SIZE];
+    pm_sfp_dom_t a2;
+    // unsigned char   a2[PM_SFP_A2_PAGE_SIZE];
 
     // retry up to 2 times if data is invalid or op fails
     int             retry_count = 2;
     unsigned char   offset;
 
     memset(&a0, 0, sizeof(a0));
-    memset(a2, 0, sizeof(a2));
+    memset(&a2, 0, sizeof(a2));
 
     // SFP+ and QSFP serial id data are at different offsets
     // take this opportunity to get the correct presence detection operation
@@ -415,6 +431,7 @@ retry_read:
             // mark port as present
             port->present = true;
             port->retry = false;
+            set_a2_read_request(port, &a0);
         } else {
             port->retry = true;
             // note: in failure case, pm_parse will already have logged
@@ -423,13 +440,12 @@ retry_read:
         }
     }
 
-    // OPS_TODO: determine how a2_read_requested will get set
-    if (port->a2_read_requested == false || offset != 0) {
+    if (port->a2_read_requested == false) {
         return 0;
     }
 
 retry_read_a2:
-    rc = pm_read_a2(port, a2);
+    rc = pm_read_a2(port, (unsigned char *)&a2);
 
     if (rc != 0) {
         if (retry_count != 0) {
@@ -440,10 +456,10 @@ retry_read_a2:
 
         VLOG_WARN("module a2 read failed: %s", port->instance);
 
-        memset(a2, 0xff, sizeof(a2));
+        memset(&a2, 0xff, sizeof(a2));
     }
 
-    pm_set_a2(port, a2);
+    pm_set_a2(port, &a2);
 
     port->a2_read_requested = false;
 
