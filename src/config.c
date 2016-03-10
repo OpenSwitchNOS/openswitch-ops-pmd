@@ -125,7 +125,7 @@ pm_create_a2_devices(void)
         // create the A2 name as the old device name with "_A2" appended
         new_name = (char *)malloc(name_len);
         strncpy(new_name, a0_device->name, name_len);
-        strncat(new_name, "_A2", name_len);
+        strncat(new_name, "_dom", name_len);
 
         // fill in the device data, which mostly matches the a0 device
         a2_device.name = new_name;
@@ -143,6 +143,8 @@ pm_create_a2_devices(void)
                      yaml_port->name);
             // continue execution, A2 data will not be available for port
         }
+
+        free(new_name);
     }
 }
 
@@ -182,7 +184,7 @@ pm_read_yaml_files(const struct ovsrec_subsystem *subsys)
     }
 
     // create extra a2 devices for SFPP ports
-    pm_create_a2_devices();
+    // pm_create_a2_devices();
 
     // send i2c initialization commands
     yaml_init_devices(global_yaml_handle, subsys->name);
