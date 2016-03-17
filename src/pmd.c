@@ -45,6 +45,7 @@
 #include <coverage.h>
 
 #include "pmd.h"
+#include "eventlog.h"
 
 VLOG_DEFINE_THIS_MODULE(ops_pmd);
 
@@ -75,6 +76,7 @@ pmd_init(const char *remote)
     unixctl_command_register("ops-pmd/dump", "", 0, 2,
                              pmd_unixctl_dump, NULL);
 
+    event_log_init("PM");
 #ifdef PLATFORM_SIMULATION
     unixctl_command_register("ops-pmd/sim", "", 2, 3,
                              pmd_unixctl_sim, NULL);
