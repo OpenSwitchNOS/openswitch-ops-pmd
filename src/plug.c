@@ -35,6 +35,7 @@
 
 #include "pmd.h"
 #include "plug.h"
+#include "eventlog.h"
 
 VLOG_DEFINE_THIS_MODULE(plug);
 
@@ -179,10 +180,14 @@ retry_read:
         if (retry_count != 0) {
             VLOG_WARN("module presence read failed, retrying: %s",
                       port->instance);
+            log_event("PM_MODULE_PRESENCE_READ_FAILURE",
+                EV_KV("port_instance", port->instance));
             retry_count--;
             goto retry_read;
         }
         VLOG_ERR("unable to read module presence: %s", port->instance);
+        log_event("PM_MODULE_PRESENCE_READ_FAILURE",
+                EV_KV("port_instance", port->instance));
         return false;
     }
 
@@ -376,10 +381,14 @@ retry_read:
             if (retry_count != 0) {
                 VLOG_DBG("module serial ID data read failed, retrying: %s",
                          port->instance);
+                log_event("PM_SERIAL_ID_DATA_READ_FAIL",
+                    EV_KV("port_instance", port->instance));
                 retry_count--;
                 goto retry_read;
             }
             VLOG_WARN("module serial ID data read failed: %s", port->instance);
+            log_event("PM_SERIAL_ID_DATA_READ_FAIL",
+                    EV_KV("port_instance", port->instance));
             pm_delete_all_data(port);
             port->present = true;
             port->retry = true;
@@ -393,6 +402,8 @@ retry_read:
         if (sfpp_sum_verify((unsigned char *)&a0) != 0) {
             if (retry_count != 0) {
                 VLOG_DBG("module serial ID data failed checksum, retrying: %s", port->instance);
+                log_event("PM_MODULE_SERIAL_ID_CHECKSUM_FAILURE",
+                    EV_KV("port_instance", port->instance));
                 retry_count--;
                 goto retry_read;
             }
@@ -574,6 +585,11 @@ pm_configure_qsfp(pm_port_t *port)
     if (0 != rc) {
         VLOG_WARN("Failed to write QSFP enable/disable: %s (%d)",
                   port->instance, rc);
+
+        log_event("PM_MODULE_ENABLE_DISABLE_WRITE_FAILURE",
+            EV_KV("port_instance", intf->name),
+            EV_KV("return_code", rc));
+
     } else {
         VLOG_DBG("Set QSFP enabled/disable: %s to %0X",
                  port->instance, data);

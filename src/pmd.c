@@ -45,6 +45,7 @@
 #include <coverage.h>
 
 #include "pmd.h"
+#include "eventlog.h"
 
 VLOG_DEFINE_THIS_MODULE(ops_pmd);
 
@@ -70,6 +71,9 @@ extern int pmd_sim_remove(const char *name, struct ds *ds);
 static void
 pmd_init(const char *remote)
 {
+
+    int retval;
+
     pm_config_init();
     pm_ovsdb_if_init(remote);
     unixctl_command_register("ops-pmd/dump", "", 0, 2,
@@ -79,6 +83,11 @@ pmd_init(const char *remote)
     unixctl_command_register("ops-pmd/sim", "", 2, 3,
                              pmd_unixctl_sim, NULL);
 #endif
+
+    retval = event_log_init("PLUGGABLE_MODULE");
+    if(retval < 0) {
+        VLOG_ERR("Event log initialization failed for pluggable module");
+    }
 }
 
 static void
