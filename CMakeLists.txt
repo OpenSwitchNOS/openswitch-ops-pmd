@@ -45,7 +45,7 @@ add_executable (${PMD} ${SOURCES})
 
 target_link_libraries (${PMD} ${OVSCOMMON_LIBRARIES} ${OVSDB_LIBRARIES}
                        ${CONFIG_YAML_LIBRARIES}
-                       -lpthread -lrt)
+                       -lpthread -lrt -lsupportability)
 
 # Rules to install ops-pmd binary in rootfs
 install(TARGETS ${PMD}
