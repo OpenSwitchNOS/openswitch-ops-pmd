@@ -553,15 +553,50 @@ pm_parse(
                         break;
                 }
             } else {
-                VLOG_DBG("module is unsupported: %s", port->instance);
-                port->optical = false;
-                SET_STATIC_STRING(port, connector, OVSREC_INTERFACE_PM_INFO_CONNECTOR_UNKNOWN);
-                SET_STATIC_STRING(port, connector_status,
-                                  OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_UNRECOGNIZED);
-                SET_INT_STRING(port, max_speed, 0);
-                set_supported_speeds(port, 1, 0);
-                DELETE(port, cable_technology);
-                DELETE_FREE(port, cable_length);
+                if (0 != qsfpp_serial_id->spec_compliance.enet_40gbase_lr4) {
+                    VLOG_DBG("module is 40G_LR4: %s", port->instance);
+                    // handle LR4 type
+                    port->optical = true;
+                    SET_STATIC_STRING(port, connector, OVSREC_INTERFACE_PM_INFO_CONNECTOR_QSFP_LR4);
+                    SET_STATIC_STRING(port, connector_status,
+                                      OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_SUPPORTED);
+                    SET_INT_STRING(port, max_speed, 40000);
+                    set_supported_speeds(port, 1, 40000);
+                    DELETE(port, cable_technology);
+                    DELETE_FREE(port, cable_length);
+                } else if (0 != qsfpp_serial_id->spec_compliance.enet_40gbase_sr4) {
+                    VLOG_DBG("module is 40G_SR4: %s", port->instance);
+                    // handle SR4 type
+                    port->optical = true;
+                    SET_STATIC_STRING(port, connector, OVSREC_INTERFACE_PM_INFO_CONNECTOR_QSFP_SR4);
+                    SET_STATIC_STRING(port, connector_status,
+                                      OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_SUPPORTED);
+                    SET_INT_STRING(port, max_speed, 40000);
+                    set_supported_speeds(port, 1, 40000);
+                    DELETE(port, cable_technology);
+                    DELETE_FREE(port, cable_length);
+                } else if (0 != qsfpp_serial_id->spec_compliance.enet_40gbase_cr4) {
+                    VLOG_DBG("module is 40G_CR4: %s", port->instance);
+                    // handle CR4 type
+                    port->optical = false;
+                    SET_STATIC_STRING(port, connector, OVSREC_INTERFACE_PM_INFO_CONNECTOR_QSFP_CR4);
+                    SET_STATIC_STRING(port, connector_status,
+                                      OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_SUPPORTED);
+                    SET_INT_STRING(port, max_speed, 40000);
+                    set_supported_speeds(port, 1, 40000);
+                    DELETE(port, cable_technology);
+                    DELETE_FREE(port, cable_length);
+                } else {
+                    VLOG_DBG("module is unsupported: %s", port->instance);
+                    port->optical = false;
+                    SET_STATIC_STRING(port, connector, OVSREC_INTERFACE_PM_INFO_CONNECTOR_UNKNOWN);
+                    SET_STATIC_STRING(port, connector_status,
+                                      OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_UNRECOGNIZED);
+                    SET_INT_STRING(port, max_speed, 0);
+                    set_supported_speeds(port, 1, 0);
+                    DELETE(port, cable_technology);
+                    DELETE_FREE(port, cable_length);
+                }
             }
             // fill in the rest of the data
             // OPS_TODO: fill in the power mode
