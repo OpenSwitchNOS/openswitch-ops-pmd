@@ -164,6 +164,7 @@ class pmdTest( OpsVsiTest ):
                 result.append(val)
         return result
 
+@pytest.mark.skipif(True, reason="Disabling old tests")
 # class to execute tests
 class Test_pmd:
 
