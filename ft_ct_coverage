@@ -5,4 +5,5 @@
 # Specify the code coverage exclude patterns (if any) using wild-cards and separated by spaces
 # Example, to exclude fiels and directories that contain gtest or openvswitch use the following
 # Exclude_pattern=*gtest* *openvswitch*
+
 Exclude_pattern=*openvswitch* *CMake* *ovs/*
