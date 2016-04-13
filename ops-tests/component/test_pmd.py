@@ -23,6 +23,7 @@ from os import chdir
 from json import loads
 from shutil import copy
 
+
 TOPOLOGY = """
 # +-------+
 # |  sw1  |
