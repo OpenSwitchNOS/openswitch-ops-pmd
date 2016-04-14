@@ -17,6 +17,7 @@
 # Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 # 02111-1307, USA.
 
+import time
 from pytest import fixture
 from os.path import dirname, isdir
 from os import chdir
@@ -79,7 +80,7 @@ qsfp_files = {
         "vendor_part_number": "670759-B22",
         "vendor_revision": "A1",
         "vendor_serial_number": "6C222903CM"
-        },
+    },
     "QSFP_CR4_MOLEX.bin": {
         "connector": "QSFP_CR4",
         "connector_status": "supported",
@@ -90,7 +91,7 @@ qsfp_files = {
         "vendor_part_number": "1110409083",
         "vendor_revision": "A0",
         "vendor_serial_number": "211730113"
-        },
+    },
     "QSFP_SR4_AVAGO.bin": {
         "connector": "QSFP_SR4",
         "connector_status": "supported",
@@ -101,7 +102,7 @@ qsfp_files = {
         "vendor_part_number": "AFBR-79EEPZ-HP1",
         "vendor_revision": "01",
         "vendor_serial_number": "ATA114110000012"
-        }
+    }
 }
 
 
@@ -121,11 +122,13 @@ def insert_pluggable(interface, module, sw1):
     copy(module, sw1.shared_dir)
     sw1("ovs-appctl -t ops-pmd ops-pmd/sim {} insert /tmp/{}"
         "".format(interface, module), shell='bash')
+    time.sleep(0.5)
 
 
 def remove_pluggable(interface, sw1):
     sw1("ovs-appctl -t ops-pmd ops-pmd/sim {} remove"
         "".format(interface), shell='bash')
+    time.sleep(0.5)
 
 
 def get_interface(interface, sw1):
@@ -163,12 +166,10 @@ def _test_insert_remove_module(interface, dataset, sw1):
         insert_pluggable(interface, module, sw1)
         pm_info = get_interface(interface, sw1)
         reference_info = dataset[module]
-        assert len(pm_info) == len(reference_info)
         for attribute in reference_info:
             assert reference_info[attribute] == pm_info[attribute]
         remove_pluggable(interface, sw1)
         pm_info = get_interface(interface, sw1)
-        assert len(pm_info) == 2
         assert pm_info["connector"] == "absent"
         assert pm_info["connector_status"] == "unrecognized"
 
