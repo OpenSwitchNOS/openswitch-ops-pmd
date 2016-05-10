@@ -20,7 +20,7 @@
 OpenSwitch Test to verify the DOM information parameters range.
 """
 
-from .dom_supporting_xvrs import dom_xvrs
+from dom_supporting_xvrs import dom_xvrs
 
 
 TOPOLOGY = """
