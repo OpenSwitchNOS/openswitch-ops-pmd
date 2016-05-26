@@ -168,9 +168,6 @@ class pmdTest( OpsVsiTest ):
 # class to execute tests
 class Test_pmd:
 
-    # Create the Mininet topology based on mininet.
-    test = pmdTest()
-
     def setup(self):
         pass
 
@@ -178,7 +175,7 @@ class Test_pmd:
         pass
 
     def setup_class(cls):
-        pass
+        Test_pmd.test = pmdTest()
 
     def teardown_class(cls):
         # Stop the Docker containers, and
