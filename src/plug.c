@@ -111,19 +111,11 @@ pm_get_presence(pm_port_t *port)
 #else
     // presence detection data
     bool                present;
-    unsigned char       byte;
-    unsigned short      word;
-    unsigned long       dword;
-    unsigned long       result;
-
-    // device data
-    const YamlDevice    *device;
+    uint32_t            result;
 
     int rc;
 
     // i2c interface structures
-    i2c_op              op;
-    i2c_op *            cmds[2];
     i2c_bit_op *        reg_op;
 
     // retry up to 5 times if data is invalid or op fails
@@ -142,46 +134,9 @@ pm_get_presence(pm_port_t *port)
         return false;
     }
 retry_read:
-    // get the presence detection device
-    device = yaml_find_device(global_yaml_handle, port->subsystem, reg_op->device);
-
-    if (NULL == device) {
-        VLOG_ERR("unable to find matching YAML device for module: %s",
-                 port->instance);
-        return false;
-    }
-
-    // construct the i2c operation
-    op.direction = READ;
-    op.device = reg_op->device;
-    op.register_address = reg_op->register_address;
-    op.byte_count = reg_op->register_size;
-
-    // generally, just one byte, but we allow up to 4
-    switch (reg_op->register_size) {
-        case 1:
-            op.data = &byte;
-            break;
-        case 2:
-            op.data = (unsigned char *)&word;
-            break;
-        case 4:
-            op.data = (unsigned char *)&dword;
-            break;
-        default:
-            VLOG_ERR("invalid data size for module presence: %s",
-                     port->instance);
-            break;
-    }
-
-    op.set_register = false;
-    op.negative_polarity = false;
-
-    cmds[0] = &op;
-    cmds[1] = NULL;
 
     // execute the operation
-    rc = i2c_execute(global_yaml_handle, port->subsystem, device, cmds);
+    rc = i2c_reg_read(global_yaml_handle, port->subsystem, reg_op, &result);
 
     if (rc != 0) {
         if (retry_count != 0) {
@@ -194,30 +149,8 @@ retry_read:
         return false;
     }
 
-    // get the result from the appropriately sized variable
-    switch (reg_op->register_size) {
-        case 1:
-            result = byte & reg_op->bit_mask;
-            break;
-        case 2:
-            result = word & reg_op->bit_mask;
-            break;
-        case 4:
-            result = dword & reg_op->bit_mask;
-            break;
-        default:
-            // already handled above
-            result = 0; // to satisfy compiler
-            break;
-    }
-
     // calculate presence
     present = (result != 0);
-
-    // for devices where 0 bit means present, reverse the logic
-    if (reg_op->negative_polarity) {
-        present = !present;
-    }
 
     return present;
 #endif
@@ -233,29 +166,15 @@ pm_read_a0(pm_port_t *port, unsigned char *data, size_t offset)
     // device data
     const YamlDevice *device;
 
-    // i2c interface structures
-    i2c_op          op;
-    i2c_op *        cmds[2];
-    int             rc;
+    int                 rc;
 
     // OPS_TODO: Need to read ready bit for QSFP modules (?)
 
     // get device for module eeprom
     device = yaml_find_device(global_yaml_handle, port->subsystem, port->module_device->module_eeprom);
 
-    // construct the i2c operation to read the data
-    op.direction = READ;
-    op.device = device->name;
-    op.register_address = offset;
-    op.byte_count = sizeof(pm_sfp_serial_id_t);
-    op.data = data;
-    op.set_register = false;
-    op.negative_polarity = false;
-
-    cmds[0] = &op;
-    cmds[1] = NULL;
-
-    rc = i2c_execute(global_yaml_handle, port->subsystem, device, cmds);
+    rc = i2c_data_read(global_yaml_handle, device, port->subsystem, offset,
+                       sizeof(pm_sfp_serial_id_t), data);
 
     if (rc != 0) {
         VLOG_ERR("module read failed: %s", port->instance);
@@ -275,9 +194,6 @@ pm_read_a2(pm_port_t *port, unsigned char *a2_data)
     // device data
     const YamlDevice    *device;
 
-    // i2c interface structures
-    i2c_op              op;
-    i2c_op *            cmds[2];
     int                 rc;
     char                a2_device_name[MAX_DEVICE_NAME_LEN];
 
@@ -293,19 +209,8 @@ pm_read_a2(pm_port_t *port, unsigned char *a2_data)
     // get constructed A2 device
     device = yaml_find_device(global_yaml_handle, port->subsystem, a2_device_name);
 
-    cmds[0] = &op;
-    cmds[1] = NULL;
-
-    // initialize i2c operation
-    op.direction = READ;
-    op.device = device->name;
-    op.register_address = 0;
-    op.byte_count = sizeof(pm_sfp_dom_t);
-    op.data = a2_data;
-    op.set_register = false;
-    op.negative_polarity = false;
-
-    rc = i2c_execute(global_yaml_handle, port->subsystem, device, cmds);
+    rc = i2c_data_read(global_yaml_handle, device, port->subsystem, 0,
+                       sizeof(pm_sfp_dom_t), a2_data);
 
     if (rc != 0) {
         VLOG_ERR("module dom read failed: %s", port->instance);
@@ -518,7 +423,7 @@ pm_read_state(void)
 void
 pm_configure_qsfp(pm_port_t *port)
 {
-    unsigned char       data = 0x00;
+    uint8_t             data = 0x00;
     unsigned int        idx;
 
 #ifdef PLATFORM_SIMULATION
@@ -541,10 +446,9 @@ pm_configure_qsfp(pm_port_t *port)
     port->port_enable = data;
     return;
 #else
-    int                 rc;
-    i2c_op              op;
-    i2c_op              *ops[2];
     const YamlDevice    *device;
+
+    int                 rc;
 
     if (false == port->present) {
         return;
@@ -571,21 +475,10 @@ pm_configure_qsfp(pm_port_t *port)
         }
     }
 
-    // write data to disable/enable QSFP+
-    ops[0] = &op;
-    ops[1] = NULL;
-
     device = yaml_find_device(global_yaml_handle, port->subsystem, port->module_device->module_eeprom);
 
-    op.direction = WRITE;
-    op.device = port->module_device->module_eeprom;
-    op.byte_count = 1;
-    op.register_address = QSFP_DISABLE_OFFSET;
-    op.data = &data;
-    op.set_register = true;
-    op.negative_polarity = false;
-
-    rc = i2c_execute(global_yaml_handle, port->subsystem, device, ops);
+    rc = i2c_data_write(global_yaml_handle, device, port->subsystem,
+                        QSFP_DISABLE_OFFSET, sizeof(data), &data);
 
     if (0 != rc) {
         VLOG_WARN("Failed to write QSFP enable/disable: %s (%d)",
@@ -603,13 +496,7 @@ void
 pm_clear_reset(pm_port_t *port)
 {
     i2c_bit_op *        reg_op = NULL;
-    i2c_op              op;
-    i2c_op *            ops[2];
-    const YamlDevice    *device;
-    unsigned char       byte;
-    unsigned short      word;
-    unsigned long       dword;
-    unsigned long       old;
+    uint32_t            data;
     int                 rc;
 
     if (0 == strcmp(port->module_device->connector, CONNECTOR_QSFP_PLUS)) {
@@ -623,104 +510,8 @@ pm_clear_reset(pm_port_t *port)
         return;
     }
 
-    device = yaml_find_device(global_yaml_handle, port->subsystem, reg_op->device);
-
-    if (NULL == device) {
-        VLOG_WARN("unable to find device for port disable: %s (%s)",
-                  port->instance, reg_op->device);
-        return;
-    }
-
-    ops[0] = &op;
-    ops[1] = NULL;
-
-    op.direction = READ;
-    op.device = reg_op->device;
-    op.byte_count = reg_op->register_size;
-    op.register_address = reg_op->register_address;
-    op.set_register = false;
-    op.negative_polarity = false;
-
-    switch (op.byte_count) {
-        case 1:
-            op.data = &byte;
-            break;
-        case 2:
-            op.data = (unsigned char *)&word;
-            break;
-        case 4:
-            op.data = (unsigned char *)&dword;
-            break;
-        default:
-            VLOG_WARN("Invalid register size for port disable %s",
-                      port->instance);
-            return;
-    }
-
-    rc = i2c_execute(global_yaml_handle, port->subsystem, device, ops);
-
-    if (rc != 0) {
-        VLOG_WARN("Failed to read module disable register: %s (%d)",
-                  port->instance, rc);
-        return;
-    }
-
-    op.direction = WRITE;
-    op.device = reg_op->device;
-    op.byte_count = reg_op->register_size;
-    op.register_address = reg_op->register_address;
-    op.set_register = false;
-    op.negative_polarity = false;
-
-    /* Note that op.data still points to the correct address */
-
-    switch (op.byte_count) {
-        case 1:
-            old = byte;
-            if (reg_op->negative_polarity) {
-                byte |= reg_op->bit_mask;
-            } else {
-                byte &= ~(reg_op->bit_mask);
-            }
-            if (old == byte) {
-                VLOG_DBG("port is correctly configured: %s",
-                        port->instance);
-                return;
-            }
-            break;
-        case 2:
-            old = word;
-            if (reg_op->negative_polarity) {
-                word |= reg_op->bit_mask;
-            } else {
-                word &= ~(reg_op->bit_mask);
-            }
-            if (old == word) {
-                VLOG_DBG("port is correctly configured: %s",
-                         port->instance);
-                return;
-            }
-            break;
-        case 4:
-            old = dword;
-            if (reg_op->negative_polarity) {
-                dword |= reg_op->bit_mask;
-            } else {
-                dword &= ~(reg_op->bit_mask);
-            }
-            if (old == dword) {
-                VLOG_DBG("port is correctly configured: %s",
-                         port->instance);
-                return;
-            }
-            break;
-        default:
-            // already checked
-            VLOG_WARN("invalid register size: %s", port->instance);
-            return;
-    }
-
-    rc = i2c_execute(global_yaml_handle, port->subsystem, device, ops);
+    data = 0;
+    rc = i2c_reg_write(global_yaml_handle, port->subsystem, reg_op, data);
 
     if (rc != 0) {
         VLOG_WARN("Unable to set module disable for port: %s (%d)",
@@ -758,14 +549,8 @@ pm_configure_port(pm_port_t *port)
     return;
 #else
     int                 rc;
+    uint32_t            data;
     i2c_bit_op          *reg_op;
-    i2c_op              op;
-    i2c_op              *ops[2];
-    const YamlDevice    *device;
-    unsigned char       byte;
-    unsigned short      word;
-    unsigned long       dword;
-    unsigned long       old;
     bool                enabled;
 
     if (NULL == port) {
@@ -780,104 +565,10 @@ pm_configure_port(pm_port_t *port)
 
     reg_op = port->module_device->module_signals.sfp.sfpp_tx_disable;
 
-    device = yaml_find_device(global_yaml_handle, port->subsystem, reg_op->device);
-
-    if (NULL == device) {
-        VLOG_WARN("unable to find device for port disable: %s (%s)",
-                  port->instance, reg_op->device);
-        return;
-    }
-
-    ops[0] = &op;
-    ops[1] = NULL;
-
-    op.direction = READ;
-    op.device = reg_op->device;
-    op.byte_count = reg_op->register_size;
-    op.register_address = reg_op->register_address;
-    op.set_register = false;
-    op.negative_polarity = false;
-
-    switch (op.byte_count) {
-        case 1:
-            op.data = &byte;
-            break;
-        case 2:
-            op.data = (unsigned char *)&word;
-            break;
-        case 4:
-            op.data = (unsigned char *)&dword;
-            break;
-        default:
-            VLOG_WARN("Invalid register size for port disable %s",
-                      port->instance);
-            return;
-    }
-
-    rc = i2c_execute(global_yaml_handle, port->subsystem, device, ops);
-
-    if (rc != 0) {
-        VLOG_WARN("Failed to read module disable register: %s (%d)",
-                  port->instance, rc);
-        return;
-    }
-
     enabled = port->hw_enable;
+    data = enabled ? 0: reg_op->bit_mask;
 
-    switch (op.byte_count) {
-        case 1:
-            old = byte;
-            if (enabled || reg_op->negative_polarity) {
-                byte &= ~(reg_op->bit_mask);
-            } else {
-                byte |= reg_op->bit_mask;
-            }
-            if (old == byte) {
-                VLOG_DBG("port is correctly configured: %s",
-                        port->instance);
-                return;
-            }
-            break;
-        case 2:
-            old = word;
-            if (enabled || reg_op->negative_polarity) {
-                word &= ~(reg_op->bit_mask);
-            } else {
-                word |= reg_op->bit_mask;
-            }
-            if (old == word) {
-                VLOG_DBG("port is correctly configured: %s",
-                         port->instance);
-                return;
-            }
-            break;
-        case 4:
-            old = dword;
-            if (enabled || reg_op->negative_polarity) {
-                dword &= ~(reg_op->bit_mask);
-            } else {
-                dword |= reg_op->bit_mask;
-            }
-            if (old == dword) {
-                VLOG_DBG("port is correctly configured: %s",
-                         port->instance);
-                return;
-            }
-            break;
-        default:
-            // already checked
-            VLOG_WARN("invalid register size: %s", port->instance);
-            return;
-    }
-
-    op.direction = WRITE;
-    op.device = reg_op->device;
-    op.byte_count = reg_op->register_size;
-    op.register_address = reg_op->register_address;
-    op.set_register = false;
-    op.negative_polarity = false;
-
-    rc = i2c_execute(global_yaml_handle, port->subsystem, device, ops);
+    rc = i2c_reg_write(global_yaml_handle, port->subsystem, reg_op, data);
 
     if (rc != 0) {
         VLOG_WARN("Unable to set module disable for port: %s (%d)",
