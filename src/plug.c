@@ -249,6 +249,7 @@ pm_read_a0(pm_port_t *port, unsigned char *data, size_t offset)
     op.register_address = offset;
     op.byte_count = sizeof(pm_sfp_serial_id_t);
     op.data = data;
+    op.port = port->module_device->module_id;
     op.set_register = false;
     op.negative_polarity = false;
 
@@ -302,6 +303,7 @@ pm_read_a2(pm_port_t *port, unsigned char *a2_data)
     op.register_address = 0;
     op.byte_count = sizeof(pm_sfp_dom_t);
     op.data = a2_data;
+    op.port = port->module_device->module_id;
     op.set_register = false;
     op.negative_polarity = false;
 
@@ -582,6 +584,7 @@ pm_configure_qsfp(pm_port_t *port)
     op.byte_count = 1;
     op.register_address = QSFP_DISABLE_OFFSET;
     op.data = &data;
+    op.port = port->module_device->module_id;
     op.set_register = true;
     op.negative_polarity = false;
 
