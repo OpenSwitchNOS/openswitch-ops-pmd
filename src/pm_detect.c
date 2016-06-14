@@ -269,6 +269,16 @@ pm_parse(
                 set_supported_speeds(port, 1, 10000);
                 DELETE(port, cable_technology);
                 DELETE_FREE(port, cable_length);
+            } else if (0 != serial_datap->transceiver.enet_10gbase_er) {
+                VLOG_DBG("module is 10G ER: %s", port->instance);
+                port->optical = true;
+                SET_STATIC_STRING(port, connector, OVSREC_INTERFACE_PM_INFO_CONNECTOR_SFP_ER);
+                SET_STATIC_STRING(port, connector_status,
+                                  OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_SUPPORTED);
+                SET_INT_STRING(port, max_speed, 10000);
+                set_supported_speeds(port, 1, 10000);
+                DELETE(port, cable_technology);
+                DELETE_FREE(port, cable_length);
             } else {
                 VLOG_DBG("module is unrecognized: %s", port->instance);
                 port->optical = false;
