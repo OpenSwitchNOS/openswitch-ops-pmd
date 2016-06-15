@@ -45,6 +45,8 @@ extern YamlConfigHandle global_yaml_handle;
 extern int sfpp_sum_verify(unsigned char *);
 extern int pm_parse(pm_sfp_serial_id_t *serial_datap, pm_port_t *port);
 
+//dummy
+
 
 /*
  * Functions to retieve DOM information
