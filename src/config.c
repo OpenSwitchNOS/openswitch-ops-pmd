@@ -120,7 +120,7 @@ pm_create_a2_devices(void)
         // construct a new YamlDevice
 
         // allocate the new name
-        name_len = strlen(a0_device->name) + 4;
+        name_len = strlen(a0_device->name) + 5;
 
         // create the A2 name as the old device name with "_A2" appended
         new_name = (char *)malloc(name_len);
