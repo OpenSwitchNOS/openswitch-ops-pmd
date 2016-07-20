@@ -52,8 +52,10 @@ set_a2_read_request(pm_port_t *port, pm_sfp_serial_id_t *serial_datap)
             port->a2_read_requested = true;
             VLOG_DBG("sfpp serial id data indicates that the DOM info is present");
         }
-    } else if (0 == strcmp(port->module_device->connector,
-                CONNECTOR_QSFP_PLUS)) {
+    } else if ((0 == strcmp(port->module_device->connector,
+                            CONNECTOR_QSFP_PLUS)) ||
+               (0 == strcmp(port->module_device->connector,
+                            CONNECTOR_QSFP28))) {
         pm_qsfp_serial_id_t *qsfpp_serial_id;
 
         qsfpp_serial_id = (pm_qsfp_serial_id_t *)serial_datap;
@@ -104,6 +106,8 @@ pm_set_a2(pm_port_t *port, pm_sfp_dom_t *a2_data)
         type = MODULE_TYPE_SFP_PLUS;
     } else if (strcmp(port->module_device->connector, CONNECTOR_QSFP_PLUS) == 0) {
         type = MODULE_TYPE_QSFP_PLUS;
+    } else if (strcmp(port->module_device->connector, CONNECTOR_QSFP28) == 0) {
+        type = MODULE_TYPE_QSFP28;
     } else {
         VLOG_WARN("unknown connector type for port: %s (%s)",
                   port->instance, port->module_device->connector);
@@ -276,6 +280,7 @@ pm_set_a2(pm_port_t *port, pm_sfp_dom_t *a2_data)
             SET_BINARY(port, a2, (char *)a2_data, sizeof(pm_sfp_dom_t));
             break;
         case MODULE_TYPE_QSFP_PLUS:
+        case MODULE_TYPE_QSFP28:
             qsfp_a2_data = (pm_qsfp_dom_t *) a2_data;
 
             // Parsing temperature value
