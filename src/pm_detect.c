@@ -468,7 +468,7 @@ pm_parse(
                         SET_STATIC_STRING(port, connector_status,
                                           OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_SUPPORTED);
                         SET_INT_STRING(port, max_speed, 100000);
-                        set_supported_speeds(port, 1, 100000);
+                        set_supported_speeds(port, 2, 40000, 100000);
                         DELETE(port, cable_technology);
                         DELETE_FREE(port, cable_length);
                         break;
@@ -480,11 +480,12 @@ pm_parse(
                         SET_STATIC_STRING(port, connector_status,
                                           OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_SUPPORTED);
                         SET_INT_STRING(port, max_speed, 100000);
-                        set_supported_speeds(port, 1, 100000);
+                        set_supported_speeds(port, 2, 40000, 100000);
                         DELETE(port, cable_technology);
                         DELETE_FREE(port, cable_length);
                         break;
-                    case PM_QSFP_EXT_COMPLIANCE_CODE_100GBASE_CWDM4:
+                    case PM_QSFP_EXT_COMPLIANCE_CODE_100GBASE_CWDM4_FEC:
+                    case PM_QSFP_EXT_COMPLIANCE_CODE_100GBASE_CWDM4_NO_FEC:
                         VLOG_DBG("module is 100G_CWDM4: %s", port->instance);
                         // handle CWDM4 type
                         port->optical = true;
@@ -492,7 +493,7 @@ pm_parse(
                         SET_STATIC_STRING(port, connector_status,
                                           OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_SUPPORTED);
                         SET_INT_STRING(port, max_speed, 100000);
-                        set_supported_speeds(port, 1, 100000);
+                        set_supported_speeds(port, 2, 40000, 100000);
                         DELETE(port, cable_technology);
                         DELETE_FREE(port, cable_length);
                         break;
@@ -504,7 +505,7 @@ pm_parse(
                         SET_STATIC_STRING(port, connector_status,
                                           OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_SUPPORTED);
                         SET_INT_STRING(port, max_speed, 100000);
-                        set_supported_speeds(port, 1, 100000);
+                        set_supported_speeds(port, 2, 40000, 100000);
                         DELETE(port, cable_technology);
                         DELETE_FREE(port, cable_length);
                         break;
@@ -516,7 +517,7 @@ pm_parse(
                         SET_STATIC_STRING(port, connector_status,
                                           OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_SUPPORTED);
                         SET_INT_STRING(port, max_speed, 100000);
-                        set_supported_speeds(port, 1, 100000);
+                        set_supported_speeds(port, 2, 40000, 100000);
                         DELETE(port, cable_technology);
                         DELETE_FREE(port, cable_length);
                         break;
@@ -528,7 +529,7 @@ pm_parse(
                         SET_STATIC_STRING(port, connector_status,
                                           OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_SUPPORTED);
                         SET_INT_STRING(port, max_speed, 100000);
-                        set_supported_speeds(port, 1, 100000);
+                        set_supported_speeds(port, 2, 40000, 100000);
                         DELETE(port, cable_technology);
                         DELETE_FREE(port, cable_length);
                         break;
