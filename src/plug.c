@@ -29,6 +29,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <time.h>
 
 #include <vswitch-idl.h>
 #include <openswitch-idl.h>
@@ -51,6 +52,16 @@ extern int pm_parse(pm_sfp_serial_id_t *serial_datap, pm_port_t *port);
  */
 extern void pm_set_a2(pm_port_t *port, pm_sfp_dom_t *a2_data);
 extern void set_a2_read_request(pm_port_t *port, pm_sfp_serial_id_t *serial_datap);
+
+/*
+ * Port Reset
+ */
+typedef enum
+{
+  SET_RESET = 0,
+  CLEAR_RESET
+} clear_reset_t;
+static void pm_reset_port(pm_port_t *port);
 
 
 //
@@ -295,8 +306,9 @@ retry_read:
 
         if (rc != 0) {
             if (retry_count != 0) {
-                VLOG_DBG("module serial ID data read failed, retrying: %s",
+                VLOG_DBG("module serial ID data read failed, resetting and retrying: %s",
                          port->instance);
+                pm_reset_port(port);
                 retry_count--;
                 goto retry_read;
             }
@@ -313,7 +325,8 @@ retry_read:
         // do checksum validation
         if (sfpp_sum_verify((unsigned char *)&a0) != 0) {
             if (retry_count != 0) {
-                VLOG_DBG("module serial ID data failed checksum, retrying: %s", port->instance);
+                VLOG_DBG("module serial ID data failed checksum, resetting and retrying: %s", port->instance);
+                pm_reset_port(port);
                 retry_count--;
                 goto retry_read;
             }
@@ -492,8 +505,18 @@ pm_configure_qsfp(pm_port_t *port)
 #endif
 }
 
-void
-pm_clear_reset(pm_port_t *port)
+
+//
+// pm_reset: reset/clear reset of pluggable module
+//
+// input: port structure
+//        indication to clear reset
+//
+// output: none
+//
+
+static void
+pm_reset(pm_port_t *port, clear_reset_t clear)
 {
     i2c_bit_op *        reg_op = NULL;
     uint32_t            data;
@@ -510,14 +533,48 @@ pm_clear_reset(pm_port_t *port)
         return;
     }
 
-    data = 0;
+    data = clear ? 0 : 0xffu;
     rc = i2c_reg_write(global_yaml_handle, port->subsystem, reg_op, data);
 
     if (rc != 0) {
-        VLOG_WARN("Unable to set module disable for port: %s (%d)",
-                  port->instance, rc);
+        VLOG_WARN("Unable to %s reset for port: %s (%d)",
+                  clear ? "clear" : "set", port->instance, rc);
         return;
     }
+}
+
+//
+// pm_clear_reset: take pluggable module out of reset
+//
+// input: port structure
+//
+// output: none
+//
+#define ONE_MILLISECOND 1000000
+#define TEN_MILLISECONDS (10*ONE_MILLISECOND)
+void
+pm_clear_reset(pm_port_t *port)
+{
+    struct timespec req = {0,TEN_MILLISECONDS};
+    pm_reset(port, CLEAR_RESET);
+    nanosleep(&req, NULL);
+}
+
+
+//
+// pm_reset_port: reset a pluggable module
+//
+// input: port structure
+//
+// output: none
+//
+static void
+pm_reset_port(pm_port_t *port)
+{
+    struct timespec req = {0,ONE_MILLISECOND};
+    pm_reset(port, SET_RESET);
+    nanosleep(&req, NULL);
+    pm_clear_reset(port);
 }
 
 //
