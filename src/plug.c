@@ -172,6 +172,7 @@ pm_read_a0(pm_port_t *port, unsigned char *data, size_t offset)
 
     // get device for module eeprom
     device = yaml_find_device(global_yaml_handle, port->subsystem, port->module_device->module_eeprom);
+    data[1] = atoi(port->module_device->name);
 
     rc = i2c_data_read(global_yaml_handle, device, port->subsystem, offset,
                        sizeof(pm_sfp_serial_id_t), data);
@@ -208,6 +209,7 @@ pm_read_a2(pm_port_t *port, unsigned char *a2_data)
 
     // get constructed A2 device
     device = yaml_find_device(global_yaml_handle, port->subsystem, a2_device_name);
+    a2_data[1] = atoi(port->module_device->name);
 
     rc = i2c_data_read(global_yaml_handle, device, port->subsystem, 0,
                        sizeof(pm_sfp_dom_t), a2_data);
@@ -424,6 +426,7 @@ void
 pm_configure_qsfp(pm_port_t *port)
 {
     uint8_t             data = 0x00;
+    uint8_t             data_temp[2];
     unsigned int        idx;
 
 #ifdef PLATFORM_SIMULATION
@@ -476,9 +479,11 @@ pm_configure_qsfp(pm_port_t *port)
     }
 
     device = yaml_find_device(global_yaml_handle, port->subsystem, port->module_device->module_eeprom);
+    data_temp[0] = data;
+    data_temp[1] = atoi(port->module_device->name);
 
     rc = i2c_data_write(global_yaml_handle, device, port->subsystem,
-                        QSFP_DISABLE_OFFSET, sizeof(data), &data);
+                        QSFP_DISABLE_OFFSET, sizeof(data), data_temp);
 
     if (0 != rc) {
         VLOG_WARN("Failed to write QSFP enable/disable: %s (%d)",
