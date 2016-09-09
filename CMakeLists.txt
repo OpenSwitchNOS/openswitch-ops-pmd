@@ -25,6 +25,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -Wall -Werror")
 OPTION( PLATFORM_SIMULATION "Enable platform simulation" OFF )
 configure_file ("${PROJECT_SOURCE_DIR}/${INCL_DIR}/pmd.h.in"
                 "${PROJECT_BINARY_DIR}/pmd.h")
+configure_file ("${PROJECT_SOURCE_DIR}/${INCL_DIR}/pm_plugins.h.in"
+                "${PROJECT_BINARY_DIR}/pm_plugins.h")
 
 # Rules to locate needed libraries
 include(FindPkgConfig)
@@ -37,11 +39,13 @@ include_directories (${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/${INCL_DIR}
 )
 
 # Source files to build ops-pmd
-set (SOURCES ${SRC_DIR}/pmd.c ${SRC_DIR}/ovsdb_access.c ${SRC_DIR}/config.c
-             ${SRC_DIR}/pm_dom.c ${SRC_DIR}/plug.c ${SRC_DIR}/pm_detect.c)
+set (SOURCES ${SRC_DIR}/pmd.c ${SRC_DIR}/ovsdb_access.c ${SRC_DIR}/config.c ${SRC_DIR}/plug.c
+     ${SRC_DIR}/pm_plugins.c ${SRC_DIR}/pm_detect.c ${SRC_DIR}/pm_dom.c)
 
 # Rules to build pluggable module daemon
 add_executable (${PMD} ${SOURCES})
+add_subdirectory(plugins/mlnx)
+add_subdirectory(plugins/i2c)
 
 target_link_libraries (${PMD} ${OVSCOMMON_LIBRARIES} ${OVSDB_LIBRARIES}
                        ${CONFIG_YAML_LIBRARIES}

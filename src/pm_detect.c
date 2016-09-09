@@ -76,7 +76,7 @@ hex_to_ascii(char *buf, int buf_size)
 }
 
 STATIC void
-set_supported_speeds(pm_port_t *port, size_t count, ...)
+set_supported_speeds(pm_module_t *port, size_t count, ...)
 {
     va_list args;
     size_t idx;
@@ -126,9 +126,9 @@ pm_oui_format(char *ascii_oui, unsigned char *binary_oui)
 int
 pm_parse(
     pm_sfp_serial_id_t  *serial_datap,
-    pm_port_t           *port)
+    pm_sfp_dom_t        *a2_data,
+    pm_module_t         *port)
 {
-    int                     type;
     char                    vendor_name[PM_VENDOR_NAME_LEN+1];
     char                    vendor_part_number[PM_VENDOR_PN_LEN+1];
     char                    vendor_revision[PM_SFP_VENDOR_REV_LEN+1];
@@ -137,36 +137,9 @@ pm_parse(
     size_t                  idx;
     pm_qsfp_serial_id_t*    qsfpp_serial_id;
 
-    // ignore modules that aren't pluggable
-    if (false == port->module_device->pluggable) {
-        VLOG_DBG("port is not pluggable: %s", port->instance);
-        return 0;
-    }
-
-    // ignore modules that don't have connector data
-    if (NULL == port->module_device->connector) {
-        VLOG_WARN("no connector info for port: %s", port->instance);
-        return -1;
-    }
-
-    // prepare for handling SFP+, QSFP+ and QSFP28 differently
-    if (strcmp(port->module_device->connector, CONNECTOR_SFP_PLUS) == 0) {
-        type = MODULE_TYPE_SFP_PLUS;
-    } else if (strcmp(port->module_device->connector, CONNECTOR_QSFP_PLUS) == 0) {
-        type = MODULE_TYPE_QSFP_PLUS;
-    } else if (strcmp(port->module_device->connector, CONNECTOR_QSFP28) == 0) {
-        type = MODULE_TYPE_QSFP28;
-    } else {
-        VLOG_WARN("unknown connector type for port: %s (%s)",
-                  port->instance, port->module_device->connector);
-        pm_delete_all_data(port);
-        SET_STATIC_STRING(port, connector, OVSREC_INTERFACE_PM_INFO_CONNECTOR_UNKNOWN);
-        return -1;
-    }
-
-    switch (type) {
-        case MODULE_TYPE_SFP_PLUS:
-            VLOG_DBG("port is SFP plus pluggable: %s", port->instance);
+    switch (serial_datap->identifier) {
+        case SFP_OR_SFP_PLUS_OR_SFP28_CABLE_ID_VALUE :
+            VLOG_DBG("module is SFP plus pluggable");
             // Supported SFP module types
             if (PM_CONNECTOR_COPPER_PIGTAIL == serial_datap->connector) {
                 unsigned int speed = 0;
@@ -339,7 +312,7 @@ pm_parse(
             // a0
             SET_BINARY(port, a0, (char *) serial_datap, sizeof(pm_sfp_serial_id_t));
             break;
-        case MODULE_TYPE_QSFP_PLUS:
+        case QSFP_PLUS_CABLE_ID_VALUE :
 
             // QSFP has a different structure definition (similar, but not
             // the same)
@@ -451,7 +424,7 @@ pm_parse(
             // a0
             SET_BINARY(port, a0, (char *) qsfpp_serial_id, sizeof(pm_qsfp_serial_id_t));
             break;
-        case MODULE_TYPE_QSFP28:
+        case QSFP28_CABLE_ID_VALUE :
 
             // Use the same structure definition used for MODULE_TYPE_QSFP_PLUS case
             VLOG_DBG("port is QSFP 28 pluggable: %s", port->instance);
@@ -651,8 +624,18 @@ pm_parse(
             SET_BINARY(port, a0, (char *) qsfpp_serial_id, sizeof(pm_qsfp_serial_id_t));
             break;
         default:
-            VLOG_WARN("port is unrecognized pluggable type: %s", port->instance);
-            break;
+            VLOG_WARN("unknown connector type for module: %x",
+                      serial_datap->identifier);
+            pm_delete_all_data(port);
+            SET_STATIC_STRING(port, connector,
+                              OVSREC_INTERFACE_PM_INFO_CONNECTOR_UNKNOWN);
+            SET_STATIC_STRING(port, connector_status,
+                              OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_UNSUPPORTED);
+            return -1;
+    }
+
+    if (a2_read_available(serial_datap)) {
+        pm_set_a2(a2_data, serial_datap->identifier, port);
     }
 
     return 0;

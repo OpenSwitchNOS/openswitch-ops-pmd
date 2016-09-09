@@ -45,6 +45,7 @@
 #include <coverage.h>
 
 #include "pmd.h"
+#include "pm_plugins.h"
 
 VLOG_DEFINE_THIS_MODULE(ops_pmd);
 
@@ -71,6 +72,11 @@ static void
 pmd_init(const char *remote)
 {
     pm_config_init();
+    if (pm_plugins_load()){
+        VLOG_ERR("Failed to load pm plugins.");
+    } else {
+        pm_plugins_init();
+    }
     pm_ovsdb_if_init(remote);
     unixctl_command_register("ops-pmd/dump", "", 0, 2,
                              pmd_unixctl_dump, NULL);
@@ -84,13 +90,15 @@ pmd_init(const char *remote)
 static void
 pmd_exit(void)
 {
+    pm_plugins_deinit();
+    pm_plugins_unload();
     ovsdb_idl_destroy(idl);
 }
 
 static void
 pmd_run(void)
 {
-    int rc;
+    int rc = 0;
 
     ovsdb_idl_run(idl);
 
@@ -208,9 +216,11 @@ main(int argc, char *argv[])
     exiting = false;
     while (!exiting) {
         pmd_run();
+        pm_plugins_run();
         unixctl_server_run(unixctl);
 
         pmd_wait();
+        pm_plugins_wait();
         unixctl_server_wait(unixctl);
 
         if (exiting) {

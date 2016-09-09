@@ -93,12 +93,14 @@
 #include <stdint.h>
 
 #include <openvswitch/vlog.h>
+#include <vswitch-idl.h>
 #include <uuid.h>
 #include <dynamic-string.h>
 
 #include "config-yaml.h"
 
 #include "pm_dom.h"
+#include "plug.h"
 
 #cmakedefine PLATFORM_SIMULATION
 
@@ -110,15 +112,20 @@
 #define PM_SFP_A2_PAGE_SIZE     128
 #define PM_SFP_A2_I2C_ADDRESS   0x51
 
-#define MODULE_TYPE_SFP_PLUS    1
-#define MODULE_TYPE_QSFP_PLUS   2
-#define MODULE_TYPE_QSFP28      3
+/* cable identification */
+#define SFP_OR_SFP_PLUS_OR_SFP28_CABLE_ID_VALUE 0x3
+#define QSFP_CABLE_ID_VALUE                     0xc
+#define QSFP_PLUS_CABLE_ID_VALUE                0xd
+#define QSFP28_CABLE_ID_VALUE                   0x11
 
 #define CONNECTOR_SFP_PLUS      "SFP_PLUS"
 #define CONNECTOR_QSFP_PLUS     "QSFP_PLUS"
 #define CONNECTOR_QSFP28        "QSFP28"
 
 #define MAX_SPLIT_COUNT       4
+
+struct pm_subsystem_class_t;
+struct pm_module_class_t;
 
 struct ovs_module_info {
     /* cable_length column.
@@ -181,9 +188,17 @@ struct ovs_module_info {
 
 }; /* struct ovs_module_info */
 
+/* ops-pmd subsystem struct. Can be extended by plugins. */
+typedef struct {
+    char *name;
+    const struct pm_subsystem_class_t *class;
+    struct uuid uuid;
+} pm_subsystem_t;
+
 typedef struct {
     char    *instance;                /* 'name' of interface that maps to
                                          'name' of port in ports.yaml file. */
+    const struct pm_module_class_t *class;
     struct uuid uuid;                 /* ovsdb uuid associated with this
                                          instance of pm_port_t. Used for
                                          detection of deleted entries in
@@ -191,7 +206,7 @@ typedef struct {
                                          OPS_TODO: use ovs map constructs
                                          instead. */
     const YamlPort  *module_device;   /* port info parsed from yaml file */
-    char *subsystem;
+    const pm_subsystem_t *subsystem;
     struct ovs_module_info ovs_module_columns; /* pluggable module data in a
                                                   form suitable for ovsrec
                                                   update */
@@ -200,15 +215,13 @@ typedef struct {
     bool    hw_enable;
     bool    hw_enable_subport[MAX_SPLIT_COUNT];
     bool    present;
-    bool    retry;
-    bool    a2_read_requested;
     bool    split;
     bool    optical;
 #ifdef PLATFORM_SIMULATION
     const unsigned char *   module_data;
     char    port_enable;
 #endif
-} pm_port_t;
+} pm_module_t;
 
 // macros to manage changes to pluggable module data in ovsrec.
 // Set static string constant.
@@ -283,31 +296,31 @@ typedef struct {
 // YAML config file method
 int pm_read_yaml_files(const struct ovsrec_subsystem *subsys);
 
-// DB access methods
-int pm_port_subscribe(void);
-int pm_update_port(void);
-
-int pm_cleanup(void);
-// allocate missing data structures
-int pm_allocate(void);
+void pm_delete_all_data(pm_module_t *module);
+const YamlPort *pm_get_yaml_port(const char *subsystem, const char *instance);
 
 // PM access methods
 int pm_read_state(void);
-int pm_set_enabled(void);
+bool pm_get_presence(const pm_module_t *module);
+int pm_read_module_state(pm_module_t *module);
+void pm_configure_module(pm_module_t *module, bool enable);
+void pm_reset_module(pm_module_t *module);
 
-extern const YamlPort *pm_get_yaml_port(const char *subsystem, const char *instance);
+int pm_ovsdb_if_init(const char *remote);
+void pm_ovsdb_update(void);
+void pm_debug_dump(struct ds *ds, int argc, const char *argv[]);
 
-extern void pm_update_port_modules(void);
-extern void pm_configure_port(pm_port_t *port);
-extern void pm_clear_reset(pm_port_t *port);
-extern void pm_delete_all_data(pm_port_t *port);
+char *hex_to_ascii(char *buf, int buf_size);
 
-extern int pm_ovsdb_if_init(const char *remote);
-extern void pm_ovsdb_update(void);
-extern void pm_debug_dump(struct ds *ds, int argc, const char *argv[]);
+void pm_config_init(void);
 
-extern char *hex_to_ascii(char *buf, int buf_size);
+void pm_set_a2(pm_sfp_dom_t *a2_data,
+               int type,
+               pm_module_t *port);
+int a2_read_available(pm_sfp_serial_id_t *serial_datap);
 
-extern void pm_config_init(void);
+int pm_parse(pm_sfp_serial_id_t  *serial_datap,
+             pm_sfp_dom_t        *a2_data,
+             pm_module_t         *port);
 
 #endif

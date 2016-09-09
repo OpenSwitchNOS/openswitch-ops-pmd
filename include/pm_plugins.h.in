@@ -1,0 +1,68 @@
+/*
+ * Copyright Mellanox Technologies, Ltd. 2001-2016.
+ * This software product is licensed under Apache version 2, as detailed in
+ * the COPYING file.
+ */
+
+#ifndef _PM_PLUGINS_H_
+#define _PM_PLUGINS_H_
+
+#include "pm_interface.h"
+
+#define PLATFORM_PLUGINS_PATH "@LIBDIR@/platform/plugins"
+#define PLATFORM_TYPE_STR "@PLATFORM_TYPE_STR@"
+
+/**
+ * Initialize opsa-pmd platform support plugin. Must be implemented in plugin.
+ */
+void pm_plugins_init(void);
+
+/**
+ * Deinitialize ops-pmd platform support plugin. Must be implemented in
+ * plugin.
+ */
+void pm_plugins_deinit(void);
+
+/**
+ * Plugins run function. Must be implemented in plugin.
+ */
+void pm_plugins_run(void);
+
+/**
+ * Plugins wait function. Must be implemented in plugin.
+ */
+void pm_plugins_wait(void);
+
+/**
+ * Get pmd subsystem class.
+ *
+ * @param[in] platform_type - string containing type of the platform.
+ *
+ * @return pointer to subsystem class.
+ * @return NULL if no plugin for specified platform was loaded
+ */
+const struct pm_subsystem_class_t *pm_subsystem_class_get(const char *platform_type);
+
+/**
+ * Get pmd module class.
+ *
+ * @param[in] platform_type - string containing type of the platform.
+ *
+ * @return pointer to class.
+ * @return NULL if no plugin for specified platform was loaded
+ */
+const struct pm_module_class_t *pm_module_class_get(const char *platform_type);
+
+/**
+ * Loads platform plugin. Initializes callbacks from plugin.
+ *
+ * @return 0 on success, non-zero value on failure.
+ */
+int pm_plugins_load(void);
+
+/**
+ * Unload plugin - deinitialize symbols by destroing handle.
+ */
+void pm_plugins_unload(void);
+
+#endif /* _PM_PLUGINS_H_ */

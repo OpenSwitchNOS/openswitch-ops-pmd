@@ -44,26 +44,18 @@ extern struct shash ovs_intfs;
 extern YamlConfigHandle global_yaml_handle;
 
 extern int sfpp_sum_verify(unsigned char *);
-extern int pm_parse(pm_sfp_serial_id_t *serial_datap, pm_port_t *port);
 
 
 /*
- * Functions to retieve DOM information
- */
-extern void pm_set_a2(pm_port_t *port, pm_sfp_dom_t *a2_data);
-extern void set_a2_read_request(pm_port_t *port, pm_sfp_serial_id_t *serial_datap);
-
-/*
- * Port Reset
+ * module Reset
  */
 typedef enum
 {
   SET_RESET = 0,
   CLEAR_RESET
 } clear_reset_t;
-static void pm_reset_port(pm_port_t *port);
 
-
+#if 0
 //
 // pm_set_enabled: change the enabled state of pluggable modules
 //
@@ -75,47 +67,25 @@ int
 pm_set_enabled(void)
 {
     struct shash_node *node;
-    pm_port_t   *port = NULL;
+    pm_module_t   *module = NULL;
 
     SHASH_FOR_EACH(node, &ovs_intfs) {
-        port = (pm_port_t *)node->data;
+        module = (pm_module_t *)node->data;
 
-        pm_configure_port(port);
+        pm_configure_module(module);
     }
 
     return 0;
 }
+#endif
 
 #define MAX_DEVICE_NAME_LEN 1024
 
-//
-// pm_delete_all_data: mark all attributes as deleted
-//                     except for connector, which is always present
-//
-void
-pm_delete_all_data(pm_port_t *port)
-{
-    DELETE(port, connector_status);
-    DELETE_FREE(port, supported_speeds);
-    DELETE(port, cable_technology);
-    DELETE_FREE(port, cable_length);
-    DELETE_FREE(port, max_speed);
-    DELETE(port, power_mode);
-    DELETE_FREE(port, vendor_name);
-    DELETE_FREE(port, vendor_oui);
-    DELETE_FREE(port, vendor_part_number);
-    DELETE_FREE(port, vendor_revision);
-    DELETE_FREE(port, vendor_serial_number);
-    DELETE_FREE(port, a0);
-    DELETE_FREE(port, a2);
-    DELETE_FREE(port, a0_uppers);
-}
-
-static bool
-pm_get_presence(pm_port_t *port)
+bool
+pm_get_presence(const pm_module_t *module)
 {
 #ifdef PLATFORM_SIMULATION
-    if (NULL != port->module_data) {
+    if (NULL != module->module_data) {
         return true;
     }
     return false;
@@ -132,31 +102,31 @@ pm_get_presence(pm_port_t *port)
     // retry up to 5 times if data is invalid or op fails
     int                 retry_count = 2;
 
-    if (0 == strcmp(port->module_device->connector, CONNECTOR_SFP_PLUS)) {
-        reg_op = port->module_device->module_signals.sfp.sfpp_mod_present;
-    } else if (0 == strcmp(port->module_device->connector,
+    if (0 == strcmp(module->module_device->connector, CONNECTOR_SFP_PLUS)) {
+        reg_op = module->module_device->module_signals.sfp.sfpp_mod_present;
+    } else if (0 == strcmp(module->module_device->connector,
                            CONNECTOR_QSFP_PLUS)) {
-        reg_op = port->module_device->module_signals.qsfp.qsfpp_mod_present;
-    } else if (0 == strcmp(port->module_device->connector,
+        reg_op = module->module_device->module_signals.qsfp.qsfpp_mod_present;
+    } else if (0 == strcmp(module->module_device->connector,
                            CONNECTOR_QSFP28)) {
-        reg_op = port->module_device->module_signals.qsfp28.qsfp28p_mod_present;
+        reg_op = module->module_device->module_signals.qsfp28.qsfp28p_mod_present;
     } else {
-        VLOG_ERR("port is not pluggable: %s", port->instance);
+        VLOG_ERR("module is not pluggable: %s", module->instance);
         return false;
     }
 retry_read:
 
     // execute the operation
-    rc = i2c_reg_read(global_yaml_handle, port->subsystem, reg_op, &result);
+    rc = i2c_reg_read(global_yaml_handle, module->subsystem->name, reg_op, &result);
 
     if (rc != 0) {
         if (retry_count != 0) {
             VLOG_WARN("module presence read failed, retrying: %s",
-                      port->instance);
+                      module->instance);
             retry_count--;
             goto retry_read;
         }
-        VLOG_ERR("unable to read module presence: %s", port->instance);
+        VLOG_ERR("unable to read module presence: %s", module->instance);
         return false;
     }
 
@@ -168,10 +138,10 @@ retry_read:
 }
 
 static int
-pm_read_a0(pm_port_t *port, unsigned char *data, size_t offset)
+pm_read_a0(pm_module_t *module, unsigned char *data, size_t offset)
 {
 #ifdef PLATFORM_SIMULATION
-    memcpy(data, port->module_data, sizeof(pm_sfp_serial_id_t));
+    memcpy(data, module->module_data, sizeof(pm_sfp_serial_id_t));
     return 0;
 #else
     // device data
@@ -182,13 +152,14 @@ pm_read_a0(pm_port_t *port, unsigned char *data, size_t offset)
     // OPS_TODO: Need to read ready bit for QSFP modules (?)
 
     // get device for module eeprom
-    device = yaml_find_device(global_yaml_handle, port->subsystem, port->module_device->module_eeprom);
+    device = yaml_find_device(global_yaml_handle, module->subsystem->name,
+                              module->module_device->module_eeprom);
 
-    rc = i2c_data_read(global_yaml_handle, device, port->subsystem, offset,
-                       sizeof(pm_sfp_serial_id_t), data);
+    rc = i2c_data_read(global_yaml_handle, device, module->subsystem->name,
+                       offset, sizeof(pm_sfp_serial_id_t), data);
 
     if (rc != 0) {
-        VLOG_ERR("module read failed: %s", port->instance);
+        VLOG_ERR("module read failed: %s", module->instance);
         return -1;
     }
 
@@ -197,7 +168,7 @@ pm_read_a0(pm_port_t *port, unsigned char *data, size_t offset)
 }
 
 static int
-pm_read_a2(pm_port_t *port, unsigned char *a2_data)
+pm_read_a2(pm_module_t *module, unsigned char *a2_data)
 {
 #ifdef PLATFORM_SIMULATION
     return -1;
@@ -209,22 +180,22 @@ pm_read_a2(pm_port_t *port, unsigned char *a2_data)
     char                a2_device_name[MAX_DEVICE_NAME_LEN];
 
     VLOG_DBG("Read A2 address from yaml files.");
-    if (strcmp(port->module_device->connector, CONNECTOR_SFP_PLUS) == 0) {
-        strncpy(a2_device_name, port->module_device->module_eeprom, MAX_DEVICE_NAME_LEN);
+    if (strcmp(module->module_device->connector, CONNECTOR_SFP_PLUS) == 0) {
+        strncpy(a2_device_name, module->module_device->module_eeprom, MAX_DEVICE_NAME_LEN);
         strncat(a2_device_name, "_dom", MAX_DEVICE_NAME_LEN);
     }
     else {
-        strncpy(a2_device_name, port->module_device->module_eeprom, MAX_DEVICE_NAME_LEN);
+        strncpy(a2_device_name, module->module_device->module_eeprom, MAX_DEVICE_NAME_LEN);
     }
 
     // get constructed A2 device
-    device = yaml_find_device(global_yaml_handle, port->subsystem, a2_device_name);
+    device = yaml_find_device(global_yaml_handle, module->subsystem->name, a2_device_name);
 
-    rc = i2c_data_read(global_yaml_handle, device, port->subsystem, 0,
+    rc = i2c_data_read(global_yaml_handle, device, module->subsystem->name, 0,
                        sizeof(pm_sfp_dom_t), a2_data);
 
     if (rc != 0) {
-        VLOG_ERR("module dom read failed: %s", port->instance);
+        VLOG_ERR("module dom read failed: %s", module->instance);
         return -1;
     }
 
@@ -235,13 +206,13 @@ pm_read_a2(pm_port_t *port, unsigned char *a2_data)
 //
 // pm_read_module_state: read the presence and id page for a pluggable module
 //
-// input: port structure
+// input: module structure
 //
 // output: success 0, failure !0
 //
 // OPS_TODO: this code needs to be refactored to simplify and clarify
 int
-pm_read_module_state(pm_port_t *port)
+pm_read_module_state(pm_module_t *module)
 {
     int             rc;
 
@@ -265,140 +236,92 @@ pm_read_module_state(pm_port_t *port)
     // SFP+ and QSFP serial id data are at different offsets
     // take this opportunity to get the correct presence detection operation
 
-    if (0 == strcmp(port->module_device->connector, CONNECTOR_SFP_PLUS)) {
+    if (0 == strcmp(module->module_device->connector, CONNECTOR_SFP_PLUS)) {
         offset = SFP_SERIAL_ID_OFFSET;
-    } else if ((0 == strcmp(port->module_device->connector,
+    } else if ((0 == strcmp(module->module_device->connector,
                             CONNECTOR_QSFP_PLUS)) ||
-               (0 == strcmp(port->module_device->connector,
+               (0 == strcmp(module->module_device->connector,
                             CONNECTOR_QSFP28))) {
         offset = QSFP_SERIAL_ID_OFFSET;
     } else {
-        VLOG_ERR("port is not pluggable: %s", port->instance);
+        VLOG_ERR("module is not pluggable: %s", module->instance);
         return -1;
     }
 
 retry_read:
-    present = pm_get_presence(port);
+    present = pm_get_presence(module);
 
     if (!present) {
-        // Update only if the module was previously present or
-        // the entry is uninitialized.
-        if ((port->present == true) ||
-            (NULL == port->ovs_module_columns.connector)) {
-            // delete current data from entry
-            port->present = false;
-            pm_delete_all_data(port);
-            // set presence enum
-            SET_STATIC_STRING(port, connector, OVSREC_INTERFACE_PM_INFO_CONNECTOR_ABSENT);
-            SET_STATIC_STRING(port, connector_status,
-                              OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_UNRECOGNIZED);
-            VLOG_DBG("module is not present for port: %s", port->instance);
-        }
         return 0;
     }
 
-    if (port->present == false || port->retry == true) {
-        // haven't read A0 data, yet
+    VLOG_DBG("transceiver is present for module: %s", module->instance);
 
-        VLOG_DBG("module is present for port: %s", port->instance);
+    rc = pm_read_a0(module, (unsigned char *)&a0, offset);
 
-        rc = pm_read_a0(port, (unsigned char *)&a0, offset);
-
-        if (rc != 0) {
-            if (retry_count != 0) {
-                VLOG_DBG("module serial ID data read failed, resetting and retrying: %s",
-                         port->instance);
-                pm_reset_port(port);
-                retry_count--;
-                goto retry_read;
-            }
-            VLOG_WARN("module serial ID data read failed: %s", port->instance);
-            pm_delete_all_data(port);
-            port->present = true;
-            port->retry = true;
-            SET_STATIC_STRING(port, connector, OVSREC_INTERFACE_PM_INFO_CONNECTOR_UNKNOWN);
-            SET_STATIC_STRING(port, connector_status,
-                              OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_UNRECOGNIZED);
-            return -1;
-        }
-
-        // do checksum validation
-        if (sfpp_sum_verify((unsigned char *)&a0) != 0) {
-            if (retry_count != 0) {
-                VLOG_DBG("module serial ID data failed checksum, resetting and retrying: %s", port->instance);
-                pm_reset_port(port);
-                retry_count--;
-                goto retry_read;
-            }
-            VLOG_WARN("module serial ID data failed checksum: %s", port->instance);
-            // mark port as present
-            port->present = true;
-            port->retry = true;
-            // delete all attributes, set "unknown" value
-            pm_delete_all_data(port);
-            SET_STATIC_STRING(port, connector, OVSREC_INTERFACE_PM_INFO_CONNECTOR_UNKNOWN);
-            SET_STATIC_STRING(port, connector_status,
-                              OVSREC_INTERFACE_PM_INFO_CONNECTOR_STATUS_UNRECOGNIZED);
-            return -1;
-        }
-
-        // parse the data into important fields, and set it as pending data
-        rc = pm_parse(&a0, port);
-
-        if (rc == 0) {
-            // mark port as present
-            port->present = true;
-            port->retry = false;
-            set_a2_read_request(port, &a0);
+    if (rc != 0) {
+        if (retry_count != 0) {
+            VLOG_DBG("module serial ID data read failed, resetting and retrying: %s",
+                    module->instance);
+            pm_reset_module(module);
+            retry_count--;
+            goto retry_read;
         } else {
-            port->retry = true;
-            // note: in failure case, pm_parse will already have logged
-            // an appropriate message.
-            VLOG_DBG("pm_parse has failed for port %s", port->instance);
+            return -1;
         }
     }
 
-    if (port->a2_read_requested == false) {
+    // do checksum validation
+    if (sfpp_sum_verify((unsigned char *)&a0) != 0) {
+        if (retry_count != 0) {
+            VLOG_DBG("module serial ID data failed checksum, resetting and retrying: %s", module->instance);
+            pm_reset_module(module);
+            retry_count--;
+            goto retry_read;
+        } else {
+            return -1;
+        }
+    }
+
+    if (!a2_read_available(&a0)) {
         return 0;
     }
 
 retry_read_a2:
-    rc = pm_read_a2(port, (unsigned char *)&a2);
+    rc = pm_read_a2(module, (unsigned char *)&a2);
 
     if (rc != 0) {
         if (retry_count != 0) {
-            VLOG_DBG("module a2 read failed, retrying: %s", port->instance);
+            VLOG_DBG("module a2 read failed, retrying: %s", module->instance);
             retry_count--;
             goto retry_read_a2;
         }
 
-        VLOG_WARN("module a2 read failed: %s", port->instance);
+        VLOG_WARN("module a2 read failed: %s", module->instance);
 
         memset(&a2, 0xff, sizeof(a2));
     }
 
-    pm_set_a2(port, &a2);
-
-    port->a2_read_requested = false;
-
-    return 0;
+    rc = pm_parse(&a0, &a2, module);
+    return rc;
 }
 
+#if 0
 //
-// pm_read_port_state: read the port state for a port
+// pm_read_module_state: read the module state for a module
 //
-// input: port structure
+// input: module structure
 //
 // output: success only
 //
 int
-pm_read_port_state(pm_port_t *port)
+pm_read_module_state(pm_module_t *module)
 {
-    if (NULL == port) {
+    if (NULL == module) {
         return 0;
     }
 
-    pm_read_module_state(port);
+    pm_read_module_state(module);
 
     return 0;
 }
@@ -416,89 +339,90 @@ pm_read_state(void)
     struct shash_node *node;
 
     SHASH_FOR_EACH(node, &ovs_intfs) {
-        pm_port_t *port;
+        pm_module_t *module;
 
-        port = (pm_port_t *)node->data;
+        module = (pm_module_t *)node->data;
 
-        pm_read_port_state(port);
+        pm_read_module_state(module);
     }
 
     return 0;
 }
-
+#endif
 //
 // pm_configure_qsfp: enable/disable qsfp module
 //
-// input: port structure
+// input: module structure
 //
 // output: none
 //
 void
-pm_configure_qsfp(pm_port_t *port)
+pm_configure_qsfp(pm_module_t *module, bool enable)
 {
     uint8_t             data = 0x00;
     unsigned int        idx;
 
 #ifdef PLATFORM_SIMULATION
-    if (true == port->split) {
+    if (true == module->split) {
         data = 0x00;
         for (idx = 0; idx < MAX_SPLIT_COUNT; idx++) {
 
-            if (false == port->hw_enable_subport[idx]) {
+            if (false == module->hw_enable_subport[idx]) {
                 data |= (1 << idx);
             }
         }
     } else {
-        if (false == port->hw_enable) {
+        if (false == enable) {
             data = 0x0f;
         } else {
             data = 0x00;
         }
     }
 
-    port->port_enable = data;
+    module->module_enable = data;
     return;
 #else
     const YamlDevice    *device;
 
     int                 rc;
 
-    if (false == port->present) {
+    if (false == module->present) {
         return;
     }
 
-    if (false == port->optical) {
+    if (false == module->optical) {
         return;
     }
 
     // OPS_TODO: the split indicator needs to be filled in
-    if (true == port->split) {
+    if (true == module->split) {
         data = 0x00;
         for (idx = 0; idx < MAX_SPLIT_COUNT; idx++) {
 
-            if (false == port->hw_enable_subport[idx]) {
+            if (false == module->hw_enable_subport[idx]) {
                 data |= (1 << idx);
             }
         }
     } else {
-        if (false == port->hw_enable) {
+        if (false == enable) {
             data = 0x0f;
         } else {
             data = 0x00;
         }
     }
 
-    device = yaml_find_device(global_yaml_handle, port->subsystem, port->module_device->module_eeprom);
+    device = yaml_find_device(global_yaml_handle, module->subsystem->name,
+                              module->module_device->module_eeprom);
 
-    rc = i2c_data_write(global_yaml_handle, device, port->subsystem,
+    rc = i2c_data_write(global_yaml_handle, device, module->subsystem->name,
                         QSFP_DISABLE_OFFSET, sizeof(data), &data);
 
     if (0 != rc) {
         VLOG_WARN("Failed to write QSFP enable/disable: %s (%d)",
-                  port->instance, rc);
+                  module->instance, rc);
     } else {
         VLOG_DBG("Set QSFP enabled/disable: %s to %0X",
-                 port->instance, data);
+                 module->instance, data);
     }
 
     return;
@@ -509,36 +433,36 @@ pm_configure_qsfp(pm_port_t *port)
 //
 // pm_reset: reset/clear reset of pluggable module
 //
-// input: port structure
+// input: module structure
 //        indication to clear reset
 //
 // output: none
 //
 
 static void
-pm_reset(pm_port_t *port, clear_reset_t clear)
+pm_reset(pm_module_t *module, clear_reset_t clear)
 {
     i2c_bit_op *        reg_op = NULL;
     uint32_t            data;
     int                 rc;
 
-    if (0 == strcmp(port->module_device->connector, CONNECTOR_QSFP_PLUS)) {
-        reg_op = port->module_device->module_signals.qsfp.qsfpp_reset;
-    } else if (0 == strcmp(port->module_device->connector, CONNECTOR_QSFP28)) {
-        reg_op = port->module_device->module_signals.qsfp28.qsfp28p_reset;
+    if (0 == strcmp(module->module_device->connector, CONNECTOR_QSFP_PLUS)) {
+        reg_op = module->module_device->module_signals.qsfp.qsfpp_reset;
+    } else if (0 == strcmp(module->module_device->connector, CONNECTOR_QSFP28)) {
+        reg_op = module->module_device->module_signals.qsfp28.qsfp28p_reset;
     }
 
     if (NULL == reg_op) {
-        VLOG_DBG("port %s does does not have a reset", port->instance);
+        VLOG_DBG("module %s does does not have a reset", module->instance);
         return;
     }
 
     data = clear ? 0 : 0xffu;
-    rc = i2c_reg_write(global_yaml_handle, port->subsystem, reg_op, data);
+    rc = i2c_reg_write(global_yaml_handle, module->subsystem->name, reg_op, data);
 
     if (rc != 0) {
-        VLOG_WARN("Unable to %s reset for port: %s (%d)",
-                  clear ? "clear" : "set", port->instance, rc);
+        VLOG_WARN("Unable to %s reset for module: %s (%d)",
+                  clear ? "clear" : "set", module->instance, rc);
         return;
     }
 }
@@ -546,60 +470,58 @@ pm_reset(pm_port_t *port, clear_reset_t clear)
 //
 // pm_clear_reset: take pluggable module out of reset
 //
-// input: port structure
+// input: module structure
 //
 // output: none
 //
 #define ONE_MILLISECOND 1000000
 #define TEN_MILLISECONDS (10*ONE_MILLISECOND)
 void
-pm_clear_reset(pm_port_t *port)
+pm_clear_reset(pm_module_t *module)
 {
     struct timespec req = {0,TEN_MILLISECONDS};
-    pm_reset(port, CLEAR_RESET);
+    pm_reset(module, CLEAR_RESET);
     nanosleep(&req, NULL);
 }
 
 
 //
-// pm_reset_port: reset a pluggable module
+// pm_reset_module: reset a pluggable module
 //
-// input: port structure
-//
-// output: none
-//
-static void
-pm_reset_port(pm_port_t *port)
-{
-    struct timespec req = {0,ONE_MILLISECOND};
-    pm_reset(port, SET_RESET);
-    nanosleep(&req, NULL);
-    pm_clear_reset(port);
-}
-
-//
-// pm_configure_port: enable/disable pluggable module
-//
-// input: port structure
+// input: module structure
 //
 // output: none
 //
 void
-pm_configure_port(pm_port_t *port)
+pm_reset_module(pm_module_t *module)
+{
+    struct timespec req = {0,ONE_MILLISECOND};
+    pm_reset(module, SET_RESET);
+    nanosleep(&req, NULL);
+    pm_clear_reset(module);
+}
+
+//
+// pm_configure_module: enable/disable pluggable module
+//
+// input: module structure
+//
+// output: none
+//
+void
+pm_configure_module(pm_module_t *module, bool enabled)
 {
 #ifdef PLATFORM_SIMULATION
-    bool                enabled;
 
-    if ((0 == strcmp(port->module_device->connector, CONNECTOR_QSFP_PLUS)) ||
-        (0 == strcmp(port->module_device->connector, CONNECTOR_QSFP28))) {
-        pm_configure_qsfp(port);
+    if ((0 == strcmp(module->module_device->connector, CONNECTOR_QSFP_PLUS)) ||
+        (0 == strcmp(module->module_device->connector, CONNECTOR_QSFP28))) {
+        pm_configure_qsfp(module);
     } else {
-        enabled = port->hw_enable;
 
         if (enabled) {
-            port->port_enable = 1;
+            module->module_enable = 1;
         } else {
-            port->port_enable = 0;
+            module->module_enable = 0;
         }
     }
 
@@ -608,33 +530,31 @@ pm_configure_port(pm_port_t *port)
     int                 rc;
     uint32_t            data;
     i2c_bit_op          *reg_op;
-    bool                enabled;
 
-    if (NULL == port) {
+    if (NULL == module) {
         return;
     }
 
-    if ((0 == strcmp(port->module_device->connector, CONNECTOR_QSFP_PLUS)) ||
-        (0 == strcmp(port->module_device->connector, CONNECTOR_QSFP28))) {
-        pm_configure_qsfp(port);
+    if ((0 == strcmp(module->module_device->connector, CONNECTOR_QSFP_PLUS)) ||
+        (0 == strcmp(module->module_device->connector, CONNECTOR_QSFP28))) {
+        pm_configure_qsfp(module, enabled);
         return;
     }
 
-    reg_op = port->module_device->module_signals.sfp.sfpp_tx_disable;
+    reg_op = module->module_device->module_signals.sfp.sfpp_tx_disable;
 
-    enabled = port->hw_enable;
     data = enabled ? 0: reg_op->bit_mask;
 
-    rc = i2c_reg_write(global_yaml_handle, port->subsystem, reg_op, data);
+    rc = i2c_reg_write(global_yaml_handle, module->subsystem->name, reg_op, data);
 
     if (rc != 0) {
-        VLOG_WARN("Unable to set module disable for port: %s (%d)",
-                  port->instance, rc);
+        VLOG_WARN("Unable to set module disable for module: %s (%d)",
+                  module->instance, rc);
         return;
     }
 
-    VLOG_DBG("set port %s to %s",
-             port->instance, enabled ? "enabled" : "disabled");
+    VLOG_DBG("set module %s to %s",
+             module->instance, enabled ? "enabled" : "disabled");
 #endif
 }
 
@@ -643,7 +563,7 @@ int
 pmd_sim_insert(const char *name, const char *file, struct ds *ds)
 {
     struct shash_node *node;
-    pm_port_t *port;
+    pm_module_t *module;
     FILE *fp;
     unsigned char *data;
 
@@ -652,11 +572,11 @@ pmd_sim_insert(const char *name, const char *file, struct ds *ds)
         ds_put_cstr(ds, "No such interface");
         return -1;
     }
-    port = (pm_port_t *)node->data;
+    module = (pm_module_t *)node->data;
 
-    if (NULL != port->module_data) {
-        free((void *)port->module_data);
-        port->module_data = NULL;
+    if (NULL != module->module_data) {
+        free((void *)module->module_data);
+        module->module_data = NULL;
     }
 
     fp = fopen(file, "r");
@@ -677,7 +597,7 @@ pmd_sim_insert(const char *name, const char *file, struct ds *ds)
 
     fclose(fp);
 
-    port->module_data = data;
+    module->module_data = data;
 
     ds_put_cstr(ds, "Pluggable module inserted");
 
@@ -688,22 +608,22 @@ int
 pmd_sim_remove(const char *name, struct ds *ds)
 {
     struct shash_node *node;
-    pm_port_t *port;
+    pm_module_t *module;
 
     node = shash_find(&ovs_intfs, name);
     if (NULL == node) {
         ds_put_cstr(ds, "No such interface");
         return -1;
     }
-    port = (pm_port_t *)node->data;
+    module = (pm_module_t *)node->data;
 
-    if (NULL == port->module_data) {
+    if (NULL == module->module_data) {
         ds_put_cstr(ds, "Pluggable module not present");
         return -1;
     }
 
-    free((void *)port->module_data);
-    port->module_data = NULL;
+    free((void *)module->module_data);
+    module->module_data = NULL;
 
     ds_put_cstr(ds, "Pluggable module removed");
     return 0;

@@ -72,7 +72,7 @@ pm_get_yaml_port(const char *subsystem, const char *instance)
 
     return(NULL);
 }
-
+#if 0
 /*
  * pm_create_a2_devices: create implied a2 devices for sfpp modules
  *
@@ -147,6 +147,7 @@ pm_create_a2_devices(void)
         free(new_name);
     }
 }
+#endif
 
 /*
  * pm_read_yaml_files: read the relevant system files for pluggable modules

@@ -41,40 +41,40 @@ VLOG_DEFINE_THIS_MODULE(dom);
 /*
  * set_a2_read_request: sets a2_read_requested if DOM info is present and is complicant
  */
-void
-set_a2_read_request(pm_port_t *port, pm_sfp_serial_id_t *serial_datap)
+int
+a2_read_available(pm_sfp_serial_id_t *serial_datap)
 {
-    if (0 == strcmp(port->module_device->connector, CONNECTOR_SFP_PLUS)) {
+    if (serial_datap->identifier == SFP_OR_SFP_PLUS_OR_SFP28_CABLE_ID_VALUE) {
         if (serial_datap->diag_monitor_type.implemented_digital &&
                 serial_datap->diag_monitor_type.internally_calibrated &&
                 serial_datap->diag_monitor_type.power_measurement_type &&
                 !serial_datap->diag_monitor_type.addr_change_required) {
-            port->a2_read_requested = true;
             VLOG_DBG("sfpp serial id data indicates that the DOM info is present");
+            return true;
         }
-    } else if ((0 == strcmp(port->module_device->connector,
-                            CONNECTOR_QSFP_PLUS)) ||
-               (0 == strcmp(port->module_device->connector,
-                            CONNECTOR_QSFP28))) {
+    } else if (serial_datap->identifier == QSFP_PLUS_CABLE_ID_VALUE ||
+               serial_datap->identifier == QSFP28_CABLE_ID_VALUE) {
         pm_qsfp_serial_id_t *qsfpp_serial_id;
 
         qsfpp_serial_id = (pm_qsfp_serial_id_t *)serial_datap;
 
         if (qsfpp_serial_id->diag_monitor_type.average_input_optical_power) {
-            port->a2_read_requested = true;
             VLOG_DBG("qsfpp serial id data indicates that the DOM info is present");
+            return true;
         }
     }
-}
 
+    return false;
+}
 
 /*
  * pm_set_a2: set the a2 value (force, since it's on demand)
  */
 void
-pm_set_a2(pm_port_t *port, pm_sfp_dom_t *a2_data)
+pm_set_a2(pm_sfp_dom_t *a2_data,
+          int type,
+          pm_module_t *port)
 {
-    int type;
     float temperature, temp_high_alarm, temp_low_alarm,
                        temp_high_warning, temp_low_warning,
           vcc, voltage_high_alarm, voltage_low_alarm,
@@ -89,37 +89,8 @@ pm_set_a2(pm_port_t *port, pm_sfp_dom_t *a2_data)
           rx1_power, rx2_power, rx3_power, rx4_power;
     pm_qsfp_dom_t *qsfp_a2_data;
 
-    // ignore modules that aren't pluggable
-    if (false == port->module_device->pluggable) {
-        VLOG_DBG("port is not pluggable: %s", port->instance);
-        return;
-    }
-
-    // ignore modules that don't have connector data
-    if (NULL == port->module_device->connector) {
-        VLOG_WARN("no connector info for port: %s", port->instance);
-        return;
-    }
-
-    // prepare for handling SFP+ and QSFP differently
-    if (strcmp(port->module_device->connector, CONNECTOR_SFP_PLUS) == 0) {
-        type = MODULE_TYPE_SFP_PLUS;
-    } else if (strcmp(port->module_device->connector, CONNECTOR_QSFP_PLUS) == 0) {
-        type = MODULE_TYPE_QSFP_PLUS;
-    } else if (strcmp(port->module_device->connector, CONNECTOR_QSFP28) == 0) {
-        type = MODULE_TYPE_QSFP28;
-    } else {
-        VLOG_WARN("unknown connector type for port: %s (%s)",
-                  port->instance, port->module_device->connector);
-
-        // to-do: delete the dom information when the connector type is unknown
-        // pm_delete_all_dom_data(port);
-        SET_STATIC_STRING(port, connector, OVSREC_INTERFACE_PM_INFO_CONNECTOR_UNKNOWN);
-        return;
-    }
-
     switch (type) {
-        case MODULE_TYPE_SFP_PLUS:
+        case SFP_OR_SFP_PLUS_OR_SFP28_CABLE_ID_VALUE:
             // Parsing temperature value
             temperature = (a2_data->temperature_msb +
                           (float)(a2_data->temperature_lsb/256));
@@ -279,8 +250,8 @@ pm_set_a2(pm_port_t *port, pm_sfp_dom_t *a2_data)
 
             SET_BINARY(port, a2, (char *)a2_data, sizeof(pm_sfp_dom_t));
             break;
-        case MODULE_TYPE_QSFP_PLUS:
-        case MODULE_TYPE_QSFP28:
+        case QSFP_PLUS_CABLE_ID_VALUE:
+        case QSFP28_CABLE_ID_VALUE:
             qsfp_a2_data = (pm_qsfp_dom_t *) a2_data;
 
             // Parsing temperature value
